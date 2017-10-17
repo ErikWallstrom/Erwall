@@ -1,0 +1,15 @@
+# This is a comment
+
+func main: () -> Int32
+{
+	mut x: Int32 = 12;
+	#{
+	#{
+	if(true)
+	{
+		printf("%i\n", 12);
+	}
+	#}
+	return 12;
+	#}
+}

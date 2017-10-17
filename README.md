@@ -50,11 +50,9 @@
 * Function definitions in functions
 * Defer (like Go)
 * Anonymous struct in structs (like Go)
-* Literal heavy (why declare variables when what you really want is values?)
 * Compatible with C
 
-## Maybe
-
+* Literal heavy (why declare variables when what you really want are values?) (?)
 * Default values for structs (?)
 * Switch working for all types (?)
 * Const by default (?)
@@ -62,4 +60,3 @@
 * Resizable arrays (?)
 * Type inference (?)
 
----
