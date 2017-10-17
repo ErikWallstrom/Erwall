@@ -1,4 +1,4 @@
-# Gymnasiearbete - Skapa ett programmeringsspråk
+# Gymnasiearbete - Skapa ett programmeringsspråk: Erwall
 
 ## Frågeställningar
 
@@ -60,3 +60,4 @@
 * Resizable arrays (?)
 * Type inference (?)
 
+![GPLv3](http://www.gnu.org/graphics/gplv3-127x51.png)
