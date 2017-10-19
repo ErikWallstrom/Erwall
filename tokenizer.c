@@ -95,7 +95,7 @@ Vec(struct Token) tokenize(const char* source)
 		}
 		else if(source[pos] == '#')
 		{
-			if(source[pos + 1] == '{') //Multiline
+			if(source[pos + 1] == '[') //Multiline
 			{
 				size_t startcolumn = column + 1;
 				size_t startline = line;
@@ -104,13 +104,13 @@ Vec(struct Token) tokenize(const char* source)
 					pos++;
 					if(source[pos] == '#')
 					{
-						if(source[pos + 1] == '{')
+						if(source[pos + 1] == '[')
 						{
 							nested++;
 							column++;
 							pos++;
 						}
-						else if(source[pos + 1] == '}')
+						else if(source[pos + 1] == ']')
 						{
 							if(nested)
 							{
@@ -135,21 +135,21 @@ Vec(struct Token) tokenize(const char* source)
 					}
 				} while(source[pos] != '\0');
 
-				if(nested || source[pos - 1] != '}')
+				if(nested || source[pos - 1] != ']')
 				{
 					log_error(
 						"Tokenizing error: No comment ending "
-							"(expected '#}') after line %zu, column %zu", 
+							"(expected '#]') after line %zu, column %zu", 
 						startline,
 						startcolumn
 					);
 				}
 			}
-			else if(source[pos + 1] == '}') //Multiline
+			else if(source[pos + 1] == ']') //Multiline
 			{
 				log_error(
 					"Tokenizing error: Unexpected comment ending "
-						"('#}') at line %zu, column %zu", 
+						"('#]') at line %zu, column %zu", 
 					line,
 					column
 				);

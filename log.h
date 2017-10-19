@@ -60,6 +60,8 @@ enum LogMsgType
 //Should this be FILE* or struct File?
 void log_msg(FILE* file, enum LogMsgType type, const char* fmt, ...)
 	__attribute__((format (printf, 3, 4)));
+
+//TODO: Set different error fatal for different files, avoid global 
 void log_seterrorfatal(LogErrorCallback callback, void* udata);
 
 void log_assert_(

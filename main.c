@@ -18,7 +18,8 @@
 */
 
 #include "tokenizer.h"
-#include <stdio.h>
+#include "ansicodes.h"
+#include "parser.h"
 #include "file.h"
 #include "log.h"
 
@@ -31,12 +32,31 @@ int main(int argc, char* argv[])
 		file_ctor(&file, argv[1], FILEMODE_READ);
 		Vec(struct Token) tokens = tokenize(file.content);
 
+		struct ANSICode titlecolor = {
+			.fg = ANSICODE_FG_GREEN, 
+			.bold = 1, 
+			.underline = 1
+		};
+		ansicode_printf(&titlecolor, "\nTokens:\n\n");
+
 		for(size_t i = 0; i < vec_getsize(tokens); i++)
 		{
-			printf("%s: %s\n", tokens[i].type->name, tokens[i].text);
+			printf("%s: ", tokens[i].type->name);
+			struct ANSICode color = {
+				.fg = ANSICODE_FG_BLUE, 
+				.bold = 1, 
+			};
+			ansicode_printf(&color, "%s\n", tokens[i].text);
 		}
 
+		ansicode_printf(&titlecolor, "\nAbstract Syntax Tree:\n\n");
+		struct ASTNode* ast = parse(tokens);
+		ast_print(ast);
+		putchar('\n');
+
 		//Cleanup
+		ast_dtor(ast);
+
 		for(size_t i = 0; i < vec_getsize(tokens); i++)
 		{
 			vec_dtor(tokens[i].text);
