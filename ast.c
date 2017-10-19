@@ -27,6 +27,7 @@ const struct ASTNodeType* const ASTNODETYPE_BLOCK = 		&(struct ASTNodeType){"Blo
 const struct ASTNodeType* const ASTNODETYPE_ARRAY = 		&(struct ASTNodeType){"Array"};
 const struct ASTNodeType* const ASTNODETYPE_POINTER = 		&(struct ASTNodeType){"Pointer"};
 const struct ASTNodeType* const ASTNODETYPE_TYPECAST = 		&(struct ASTNodeType){"Type Cast"};
+const struct ASTNodeType* const ASTNODETYPE_VAR_VALUE = 	&(struct ASTNodeType){"Variable value"};
 const struct ASTNodeType* const ASTNODETYPE_FUNC_ARG = 		&(struct ASTNodeType){"Function Argument"};
 const struct ASTNodeType* const ASTNODETYPE_FUNC_CALL = 	&(struct ASTNodeType){"Function Call"};
 const struct ASTNodeType* const ASTNODETYPE_FUNC_ARGS = 	&(struct ASTNodeType){"Function Arguments"};

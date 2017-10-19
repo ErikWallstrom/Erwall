@@ -46,6 +46,8 @@ const struct TokenType* const TOKENTYPE_OPERATOR_LESSOREQUAL	= &(struct TokenTyp
 const struct TokenType* const TOKENTYPE_OPERATOR_GREATEROREQUAL = &(struct TokenType){"Operator 'Greater Than or Equal'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_AND			= &(struct TokenType){"Operator 'Logical And'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_OR				= &(struct TokenType){"Operator 'Logical Or'"};
+const struct TokenType* const TOKENTYPE_OPERATOR_BITOR			= &(struct TokenType){"Operator 'Bitwise Or'"};
+const struct TokenType* const TOKENTYPE_OPERATOR_BITAND			= &(struct TokenType){"Operator 'Bitwise And'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_ASSIGN 		= &(struct TokenType){"Operator 'Assign'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_ADDASSIGN		= &(struct TokenType){"Operator 'Add and Assign'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_SUBASSIGN		= &(struct TokenType){"Operator 'Subtract and Assign'"};
@@ -302,7 +304,7 @@ Vec(struct Token) tokenize(const char* source)
 			case '-':
 				if(source[pos + 1] == '=')
 				{
-					token.type = TOKENTYPE_OPERATOR_ADDASSIGN;
+					token.type = TOKENTYPE_OPERATOR_SUBASSIGN;
 					column++;
 					vec_pushback(token.text, source[pos]);
 					pos++;
@@ -316,7 +318,7 @@ Vec(struct Token) tokenize(const char* source)
 				}
 				else
 				{
-					token.type = TOKENTYPE_OPERATOR_ADD;
+					token.type = TOKENTYPE_OPERATOR_SUB;
 				}
 				break;
 
@@ -442,13 +444,7 @@ Vec(struct Token) tokenize(const char* source)
 				}
 				else
 				{
-					log_error(
-						"Tokenizing error: Invalid character "
-							"('&'), (did you mean '&&'?) at line"
-							" %zu, column %zu", 
-						line,
-						column
-					);
+					token.type = TOKENTYPE_OPERATOR_BITAND;
 				}
 				break;
 
@@ -462,13 +458,7 @@ Vec(struct Token) tokenize(const char* source)
 				}
 				else
 				{
-					log_error(
-						"Tokenizing error: Invalid character "
-							"('|'), (did you mean '||' at line"
-							" %zu, column %zu", 
-						line,
-						column
-					);
+					token.type = TOKENTYPE_OPERATOR_BITOR;
 				}
 				break;
 

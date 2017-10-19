@@ -1,0 +1,12 @@
+# This function returns an int
+
+func main: ()
+{
+	func add: (let x: Int32, let y: Int32) -> Int32
+	{ 
+		let result: Int32 = -x * 2;
+	}
+
+	print(add(12, 44));
+}
+

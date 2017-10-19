@@ -51,6 +51,8 @@ extern const struct TokenType* const TOKENTYPE_OPERATOR_LESSOREQUAL;
 extern const struct TokenType* const TOKENTYPE_OPERATOR_GREATEROREQUAL;
 extern const struct TokenType* const TOKENTYPE_OPERATOR_AND;
 extern const struct TokenType* const TOKENTYPE_OPERATOR_OR;
+extern const struct TokenType* const TOKENTYPE_OPERATOR_BITOR;
+extern const struct TokenType* const TOKENTYPE_OPERATOR_BITAND;
 extern const struct TokenType* const TOKENTYPE_OPERATOR_ASSIGN;
 extern const struct TokenType* const TOKENTYPE_OPERATOR_ADDASSIGN;
 extern const struct TokenType* const TOKENTYPE_OPERATOR_SUBASSIGN;

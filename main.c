@@ -31,14 +31,14 @@ int main(int argc, char* argv[])
 		struct File file;
 		file_ctor(&file, argv[1], FILEMODE_READ);
 		Vec(struct Token) tokens = tokenize(file.content);
-
 		struct ANSICode titlecolor = {
 			.fg = ANSICODE_FG_GREEN, 
 			.bold = 1, 
 			.underline = 1
 		};
-		ansicode_printf(&titlecolor, "\nTokens:\n\n");
 
+		//Print out
+		ansicode_printf(&titlecolor, "\nTokens:\n\n");
 		for(size_t i = 0; i < vec_getsize(tokens); i++)
 		{
 			printf("%s: ", tokens[i].type->name);
@@ -48,9 +48,10 @@ int main(int argc, char* argv[])
 			};
 			ansicode_printf(&color, "%s\n", tokens[i].text);
 		}
+		struct ASTNode* ast = parse(tokens);
+
 
 		ansicode_printf(&titlecolor, "\nAbstract Syntax Tree:\n\n");
-		struct ASTNode* ast = parse(tokens);
 		ast_print(ast);
 		putchar('\n');
 
