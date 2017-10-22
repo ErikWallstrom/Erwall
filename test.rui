@@ -5,8 +5,14 @@ func main: ()
 	func add: (let x: Int32, let y: Int32) -> Int32
 	{ 
 		let result: Int32 = -x * 2;
-	}
+	};
 
 	print(add(12, 44));
-}
+	mut value: Bool = 4 + 3 < 5 && add(50.3, "Hello") + 44 == 16.3 - 2;
+
+	if(value == true || value != false)
+	{ 
+		print("It works");
+	};
+};
 

@@ -31,6 +31,8 @@ int main(int argc, char* argv[])
 		struct File file;
 		file_ctor(&file, argv[1], FILEMODE_READ);
 		Vec(struct Token) tokens = tokenize(file.content);
+		struct ASTNode* ast = parse(tokens);
+
 		struct ANSICode titlecolor = {
 			.fg = ANSICODE_FG_GREEN, 
 			.bold = 1, 
@@ -48,8 +50,6 @@ int main(int argc, char* argv[])
 			};
 			ansicode_printf(&color, "%s\n", tokens[i].text);
 		}
-		struct ASTNode* ast = parse(tokens);
-
 
 		ansicode_printf(&titlecolor, "\nAbstract Syntax Tree:\n\n");
 		ast_print(ast);

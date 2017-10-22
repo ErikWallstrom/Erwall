@@ -43,7 +43,8 @@ static int parser_check(struct Parser* parser, const struct TokenType* type)
 	return 0;
 }
 
-static struct Token parser_expect(struct Parser* parser, const struct TokenType* type)
+static 
+struct Token parser_expect(struct Parser* parser, const struct TokenType* type)
 {
 	if(!parser_check(parser, type))
 	{
@@ -160,7 +161,7 @@ static struct ASTNode* parse_factor(struct Parser* parser)
 	else
 	{ 
 		log_error(
-			"Parsing error: Unexpected %s (%s), at line %zu"
+			"Parsing error: Unexpected %s ('%s'), at line %zu"
 				", column %zu", 
 			parser->tokens[parser->current].type->name,
 			parser->tokens[parser->current].text,
@@ -193,11 +194,11 @@ static struct ASTNode* parse_exponent(struct Parser* parser)
 static struct ASTNode* parse_sign(struct Parser* parser)
 { 
 	struct ASTNode* signnode;
-	if(parser_check(parser, TOKENTYPE_OPERATOR_SUB))
+	if(parser_check(parser, TOKENTYPE_OPERATOR_SUB) ||
+		parser_check(parser, TOKENTYPE_OPERATOR_NOT))
 	{
-		signnode = ast_newfromtoken(
-			parser_expect(parser, TOKENTYPE_OPERATOR_SUB)
-		);
+		signnode = ast_newfromtoken(parser->tokens[parser->current]);
+		parser->current++;
 		ast_addbranch(signnode, parse_exponent(parser));
 	}
 	else
@@ -227,22 +228,83 @@ static struct ASTNode* parse_term(struct Parser* parser)
 	return termnode;
 }
 
-static struct ASTNode* parse_expression(struct Parser* parser)
-{
-	struct ASTNode* exprnode = parse_term(parser);
+static struct ASTNode* parse_plusminus(struct Parser* parser)
+{ 
+	struct ASTNode* pmnode = parse_term(parser);
 	while(parser_check(parser, TOKENTYPE_OPERATOR_ADD) ||
 		parser_check(parser, TOKENTYPE_OPERATOR_SUB))
 	{
-		struct ASTNode* oldnode = exprnode;
-		exprnode = ast_newfromtoken(parser->tokens[parser->current]);
+		struct ASTNode* oldnode = pmnode;
+		pmnode = ast_newfromtoken(parser->tokens[parser->current]);
 		parser->current++;
 
-		ast_addbranch(exprnode, oldnode);
+		ast_addbranch(pmnode, oldnode);
 		struct ASTNode* newnode = parse_term(parser);
-		ast_addbranch(exprnode, newnode);
+		ast_addbranch(pmnode, newnode);
 	}
 
-	return exprnode;
+	return pmnode;
+}
+
+static struct ASTNode* parse_comparison(struct Parser* parser)
+{ 
+	struct ASTNode* cmpnode = parse_plusminus(parser);
+	while(parser_check(parser, TOKENTYPE_OPERATOR_LESS) ||
+		parser_check(parser, TOKENTYPE_OPERATOR_LESSOREQUAL) ||
+		parser_check(parser, TOKENTYPE_OPERATOR_GREATER) ||
+		parser_check(parser, TOKENTYPE_OPERATOR_GREATEROREQUAL))
+	{ 
+		struct ASTNode* oldnode = cmpnode;
+		cmpnode = ast_newfromtoken(parser->tokens[parser->current]);
+		parser->current++;
+
+		ast_addbranch(cmpnode, oldnode);
+		struct ASTNode* newnode = parse_plusminus(parser);
+		ast_addbranch(cmpnode, newnode);
+	}
+
+	return cmpnode;
+}
+
+static struct ASTNode* parse_equality(struct Parser* parser)
+{ 
+	struct ASTNode* eqnode = parse_comparison(parser);
+	while(parser_check(parser, TOKENTYPE_OPERATOR_EQUAL) ||
+		parser_check(parser, TOKENTYPE_OPERATOR_NOTEQUAL))
+	{ 
+		struct ASTNode* oldnode = eqnode;
+		eqnode = ast_newfromtoken(parser->tokens[parser->current]);
+		parser->current++;
+
+		ast_addbranch(eqnode, oldnode);
+		struct ASTNode* newnode = parse_comparison(parser);
+		ast_addbranch(eqnode, newnode);
+	}
+
+	return eqnode;
+}
+
+static struct ASTNode* parse_andor(struct Parser* parser)
+{ 
+	struct ASTNode* andornode = parse_equality(parser);
+	while(parser_check(parser, TOKENTYPE_OPERATOR_AND) ||
+		parser_check(parser, TOKENTYPE_OPERATOR_OR))
+	{ 
+		struct ASTNode* oldnode = andornode;
+		andornode = ast_newfromtoken(parser->tokens[parser->current]);
+		parser->current++;
+
+		ast_addbranch(andornode, oldnode);
+		struct ASTNode* newnode = parse_equality(parser);
+		ast_addbranch(andornode, newnode);
+	}
+
+	return andornode;
+}
+
+static struct ASTNode* parse_expression(struct Parser* parser)
+{
+	return parse_andor(parser);
 }
 
 static struct ASTNode* parse_function(struct Parser* parser);
@@ -293,7 +355,7 @@ static struct ASTNode* parse_block(struct Parser* parser)
 		else if(parser_check(parser, TOKENTYPE_KEYWORD_MUT))
 		{
 			struct ASTNode* varnode = ast_newfromtoken(
-				parser_expect(parser, TOKENTYPE_KEYWORD_LET)
+				parser_expect(parser, TOKENTYPE_KEYWORD_MUT)
 			);
 
 			struct ASTNode* identnode = ast_newfromtoken(
@@ -321,11 +383,37 @@ static struct ASTNode* parse_block(struct Parser* parser)
 				ast_addbranch(blocknode, parse_funccall(parser));
 			}
 		}
+		else if(parser_check(parser, TOKENTYPE_KEYWORD_IF))
+		{ 
+			struct ASTNode* ifnode = ast_newfromtoken(
+				parser_expect(parser, TOKENTYPE_KEYWORD_IF)
+			);
+			
+			parser_expect(parser, TOKENTYPE_LPAREN);
+			ast_addbranch(ifnode, parse_expression(parser));
+			parser_expect(parser, TOKENTYPE_RPAREN);
+			ast_addbranch(ifnode, parse_block(parser));
+			ast_addbranch(blocknode, ifnode);
+
+			continue; //Don't expect semicolon in the end
+		}
+		else
+		{ 
+			log_error(
+				"Parsing error: Unexpected %s ('%s'), at line %zu"
+					", column %zu", 
+				parser->tokens[parser->current].type->name,
+				parser->tokens[parser->current].text,
+				parser->tokens[parser->current].line,
+				parser->tokens[parser->current].column
+			);
+		}
 
 		parser_expect(parser, TOKENTYPE_END);
 	}
 
 	parser_expect(parser, TOKENTYPE_RCURLY);
+	parser_expect(parser, TOKENTYPE_END);
 	return blocknode;
 }
 
@@ -433,7 +521,7 @@ struct ASTNode* parse(Vec(struct Token) tokens)
 		else
 		{
 			log_error(
-				"Parsing error: Unexpected %s (%s), at line %zu"
+				"Parsing error: Unexpected %s ('%s'), at line %zu"
 					", column %zu", 
 				tokens[parser.current].type->name,
 				tokens[parser.current].text,
