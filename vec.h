@@ -58,9 +58,10 @@
 	memcpy((v), (a), (n) * sizeof(*(a)))
 #define vec_clear(v) \
 	vec_collapse((v), 0, vec_getsize((v)))
+//XXX: vec_pushbackwitharr is ugly
 #define vec_pushbackwitharr(v, a, n) \
 	vec_expand((v), vec_getsize((v)), (n)), \
-	memcpy((v) + vec_getsize((v)), (a), (n) * sizeof(*(a)))
+	memcpy((v) + vec_getsize((v)) - (n), (a), (n) * sizeof(*(a)))
 #define vec_pushwitharr(v, a, n) \
 	vec_expand((v), 0, (n)), \
 	memcpy((v), (a), (n) * sizeof(*(a)))

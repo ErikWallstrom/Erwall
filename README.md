@@ -51,6 +51,7 @@
 * Defer (like Go)
 * Anonymous struct in structs (like Go)
 * Compatible with C
+* Compile time execution and loading of strings
 
 * Literal heavy (why declare variables when what you really want are values?) (?)
 * Default values for structs (?)

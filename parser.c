@@ -307,6 +307,27 @@ static struct ASTNode* parse_expression(struct Parser* parser)
 	return parse_andor(parser);
 }
 
+static struct ASTNode* parse_typedeclr(struct Parser* parser)
+{ 
+	struct ASTNode* typedeclrnode = ast_newfromtoken(
+		parser_expect(parser, TOKENTYPE_KEYWORD_TYPE)
+	);
+
+	struct ASTNode* newtypenode = ast_newfromtoken(
+		parser_expect(parser, TOKENTYPE_TYPE)
+	);
+
+	parser_expect(parser, TOKENTYPE_OPERATOR_DECLR);
+	struct ASTNode* typenode = ast_newfromtoken(
+		parser_expect(parser, TOKENTYPE_TYPE)
+	);
+
+	ast_addbranch(typedeclrnode, newtypenode);
+	ast_addbranch(typedeclrnode, typenode);
+
+	return typedeclrnode;
+}
+
 static struct ASTNode* parse_function(struct Parser* parser);
 
 static struct ASTNode* parse_block(struct Parser* parser)
@@ -323,6 +344,10 @@ static struct ASTNode* parse_block(struct Parser* parser)
 		{ 
 			ast_addbranch(blocknode, parse_function(parser));
 			continue; //Don't expect semicolon in the end
+		}
+		else if(parser_check(parser, TOKENTYPE_KEYWORD_TYPE))
+		{ 
+			ast_addbranch(blocknode, parse_typedeclr(parser));
 		}
 		else if(parser_check(parser, TOKENTYPE_KEYWORD_LET))
 		{
@@ -396,6 +421,15 @@ static struct ASTNode* parse_block(struct Parser* parser)
 			ast_addbranch(blocknode, ifnode);
 
 			continue; //Don't expect semicolon in the end
+		}
+		else if(parser_check(parser, TOKENTYPE_KEYWORD_RETURN))
+		{ 
+			struct ASTNode* retnode = ast_newfromtoken(
+				parser_expect(parser, TOKENTYPE_KEYWORD_RETURN)
+			);
+
+			ast_addbranch(retnode, parse_expression(parser));
+			ast_addbranch(blocknode, retnode);
 		}
 		else
 		{ 
@@ -517,6 +551,11 @@ struct ASTNode* parse(Vec(struct Token) tokens)
 		if(parser_check(&parser, TOKENTYPE_KEYWORD_FUNC))
 		{
 			ast_addbranch(root, parse_function(&parser));
+		}
+		else if(parser_check(&parser, TOKENTYPE_KEYWORD_TYPE))
+		{ 
+			ast_addbranch(root, parse_typedeclr(&parser));
+			parser_expect(&parser, TOKENTYPE_END);
 		}
 		else
 		{
