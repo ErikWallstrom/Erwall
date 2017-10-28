@@ -1,0 +1,9 @@
+func pi: (let x: Int32, mut y: Float64, let name: Char) -> Float32
+{ 
+};
+
+func main: (let lol: Int64, let abx: UInt8) -> Int32
+{
+	let y: Float32 = pi(12, Float64(23.5), 'H');
+	let x: Int32 = Float32(ys);
+};

@@ -28,7 +28,6 @@ const struct TokenType* const TOKENTYPE_KEYWORD_LET				= &(struct TokenType){"Ke
 const struct TokenType* const TOKENTYPE_KEYWORD_MUT 			= &(struct TokenType){"Keyword 'mut'"};
 const struct TokenType* const TOKENTYPE_KEYWORD_TYPE 			= &(struct TokenType){"Keyword 'type'"};
 const struct TokenType* const TOKENTYPE_KEYWORD_IF 				= &(struct TokenType){"Keyword 'if'"};
-const struct TokenType* const TOKENTYPE_KEYWORD_CAST			= &(struct TokenType){"Keyword 'cast'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_DECLR			= &(struct TokenType){"Operator 'Declaration'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_ADD			= &(struct TokenType){"Operator 'Add'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_SUB			= &(struct TokenType){"Operator 'Subtract'"};
@@ -226,11 +225,6 @@ Vec(struct Token) tokenize(const char* source)
 				!memcmp("if", token.text, sizeof("if") - 1))
 			{
 				token.type = TOKENTYPE_KEYWORD_IF;
-			}
-			else if(sizeof("cast") - 1 == vec_getsize(token.text) &&
-				!memcmp("cast", token.text, sizeof("cast") - 1))
-			{
-				token.type = TOKENTYPE_KEYWORD_CAST;
 			}
 			else if(sizeof("true") - 1 == vec_getsize(token.text) &&
 				!memcmp("true", token.text, sizeof("true") - 1))

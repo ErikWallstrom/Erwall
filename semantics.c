@@ -1,0 +1,269 @@
+#include "semantics.h"
+#include "scope.h"
+#include "log.h"
+#include <string.h>
+
+static void checkfunccall(struct ASTNode* callnode, struct Scope* scope);
+static void checkexprtype(
+	struct ASTNode* typenode, 
+	struct ASTNode* exprnode, 
+	struct Scope* scope);
+
+static struct ASTNode* getexprtype(struct ASTNode* exprnode, struct Scope* scope)
+{ 
+	struct ASTNode* ret = NULL;
+	if(exprnode->istoken)
+	{ 
+		if(vec_getsize(exprnode->branches) > 1)
+		{ 
+			struct ASTNode* type = getexprtype(exprnode->branches[0], scope);
+			checkexprtype(type, getexprtype(exprnode->branches[1], scope), scope);
+			ret = type;
+		}
+		else if(vec_getsize(exprnode->branches) == 1) //Unary operator
+		{ 
+			ret = getexprtype(exprnode->branches[0], scope);
+			//TODO: Check if negative works on type
+		}
+		else //Literal/identifier
+		{ 
+			if(exprnode->token.type == TOKENTYPE_LITERAL_BOOL)
+			{ 
+				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Bool"};
+				ret = scope_gettype(scope, ast_newfromtoken(token));
+			}
+			else if(exprnode->token.type == TOKENTYPE_LITERAL_INT)
+			{ 
+				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Int32"};
+				ret = scope_gettype(scope, ast_newfromtoken(token));
+			}
+			else if(exprnode->token.type == TOKENTYPE_LITERAL_FLOAT)
+			{ 
+				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Float32"};
+				ret = scope_gettype(scope, ast_newfromtoken(token));
+			}
+			else if(exprnode->token.type == TOKENTYPE_LITERAL_CHAR)
+			{ 
+				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Char"};
+				ret = scope_gettype(scope, ast_newfromtoken(token));
+			}
+			else if(exprnode->token.type == TOKENTYPE_IDENT)
+			{ 
+				struct ASTNode* varnode = scope_getvariable(scope, exprnode);
+				ret = scope_gettype(scope, varnode->branches[1]);
+			}
+			else
+			{ 
+				log_info("This shouldn't happen 1'");
+			}
+		}
+	}
+	else //Cast/function call
+	{ 
+		if(exprnode->descriptor == ASTNODETYPE_FUNC_CALL)
+		{ 
+			checkfunccall(exprnode, scope);
+			struct ASTNode* funcnode = scope_getfunction(scope, exprnode->branches[0]);
+			if(vec_getsize(funcnode->branches[2]))
+			{ 
+				ret = scope_gettype(
+					scope, 
+					funcnode->branches[2]->branches[0]
+				);
+			}
+			else
+			{ 
+				log_error(
+					"Semantic error: Void function used in expression (%s)"
+						" (line %zu, column %zu)",
+					exprnode->branches[0]->token.text,
+					exprnode->branches[0]->token.line,
+					exprnode->branches[0]->token.column
+				);
+			}
+		}
+		else if(exprnode->descriptor == ASTNODETYPE_TYPECAST)
+		{ 
+			getexprtype(exprnode->branches[1], scope);
+			ret = scope_gettype(scope, exprnode->branches[0]);
+		}
+		else
+		{ 
+			log_info("This shouldn't happen 2'");
+		}
+	}
+
+	return ret;
+}
+
+static void checkexprtype(
+	struct ASTNode* typenode, 
+	struct ASTNode* exprnode, 
+	struct Scope* scope)
+{ 
+	const char* type1 = typenode->branches[0]->token.text;
+	const char* type2 = getexprtype(exprnode, scope)->branches[0]->token.text;
+
+	if(strcmp(type1, type2))
+	{ 
+		log_error(
+			"Semantic error: Expected type '%s', got type "
+				"'%s' (%s) (line %zu, column %zu)",
+			type1,
+			type2,
+			exprnode->istoken ? exprnode->token.text : 
+				exprnode->branches[0]->token.text, //?
+			exprnode->istoken ? exprnode->token.line :
+				exprnode->branches[0]->token.line,
+			exprnode->istoken ? exprnode->token.column : 
+				exprnode->branches[0]->token.column
+		);
+	}
+}
+
+static void checkfunccall(struct ASTNode* callnode, struct Scope* scope)
+{ 
+	struct ASTNode* namenode = callnode->branches[0];
+	struct ASTNode* funcnode = scope_getfunction(scope, namenode);
+	struct ASTNode* funcargsnode = funcnode->branches[1];
+	struct ASTNode* callargsnode = callnode->branches[1];
+
+	if(vec_getsize(funcargsnode->branches) != 
+		vec_getsize(callargsnode->branches))
+	{ 
+		log_error(
+			"Semantic error: Incorrect number of arguments in function call"
+				" '%s' (line %zu, column %zu). Expected %zu, got %zu",
+			namenode->token.text,
+			namenode->token.line,
+			namenode->token.column,
+			vec_getsize(funcargsnode->branches),
+			vec_getsize(callargsnode->branches)
+		);
+	}
+
+	for(size_t i = 0; i < vec_getsize(funcargsnode->branches); i++)
+	{ 
+		struct ASTNode* argnode = funcargsnode->branches[i];
+		struct ASTNode* argnodetype = argnode->branches[1];
+		struct ASTNode* argtype = scope_gettype(scope, argnodetype);
+
+		checkexprtype(argtype, callargsnode->branches[i], scope);
+	}
+}
+
+static void checkblock(struct ASTNode* blocknode, struct Scope* scope)
+{ 
+	for(size_t i = 0; i < vec_getsize(blocknode->branches); i++)
+	{ 
+		if(blocknode->branches[i]->istoken)
+		{ 
+			if(blocknode->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
+			{
+				struct ASTNode* funcnode = blocknode->branches[i];
+				scope_addfunction(scope, funcnode);
+				struct Scope newscope;
+				scope_ctor(&newscope, scope);
+
+				struct ASTNode* argsnode = funcnode->branches[1];
+				for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
+				{ 
+					scope_addvariable(&newscope, argsnode->branches[j]);
+				}
+
+				struct ASTNode* newblocknode = funcnode->branches[3];
+				checkblock(newblocknode, &newscope);
+			}
+			else if(blocknode->branches[i]->token.type == 
+				TOKENTYPE_KEYWORD_TYPE)
+			{
+				struct ASTNode* typenode = blocknode->branches[i];
+				scope_addtype(scope, typenode);
+			}
+			else if(blocknode->branches[i]->token.type == TOKENTYPE_KEYWORD_LET 
+				|| blocknode->branches[i]->token.type == TOKENTYPE_KEYWORD_MUT)
+			{ 
+				struct ASTNode* varnode = blocknode->branches[i];
+				scope_addvariable(scope, varnode);
+
+				struct ASTNode* valuenode = varnode->branches[2];
+				if(vec_getsize(valuenode->branches))
+				{ 
+					struct ASTNode* varnodetype = varnode->branches[1];
+					struct ASTNode* vartype = scope_gettype(
+						scope,
+						varnodetype
+					);
+
+					checkexprtype(vartype, valuenode->branches[0], scope);
+				}
+			}
+		}
+		else
+		{ 
+			if(blocknode->branches[i]->descriptor == ASTNODETYPE_FUNC_CALL)
+			{ 
+				struct ASTNode* callnode = blocknode->branches[i];
+				checkfunccall(callnode, scope);
+			}
+		}
+	}
+}
+
+void checksemantics(struct ASTNode* ast)
+{
+	struct Scope globalscope;
+	scope_ctor(&globalscope, NULL);
+
+	char* types[] = { 
+		"Int8",
+		"Int16",
+		"Int32",
+		"Int64",
+		"UInt8",
+		"UInt16",
+		"UInt32",
+		"UInt64",
+		"Float32",
+		"Float64",
+		"Char",
+		"Bool",
+	};
+
+	struct Token typetoken = {.type = TOKENTYPE_KEYWORD_TYPE, .text = "type"};
+	struct Token token = {.type = TOKENTYPE_TYPE};
+	struct ASTNode* node;
+
+	for(size_t i = 0; i < sizeof types / sizeof *types; i++)
+	{  
+		node = ast_newfromtoken(typetoken);
+		token.text = types[i];
+		ast_addbranch(node, ast_newfromtoken(token));
+		scope_addtype(&globalscope, node);
+	}
+
+	for(size_t i = 0; i < vec_getsize(ast->branches); i++)
+	{
+		if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
+		{
+			struct ASTNode* funcnode = ast->branches[i];
+			scope_addfunction(&globalscope, funcnode);
+			struct Scope scope;
+			scope_ctor(&scope, &globalscope);
+
+			struct ASTNode* argsnode = funcnode->branches[1];
+			for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
+			{ 
+				scope_addvariable(&scope, argsnode->branches[j]);
+			}
+
+			struct ASTNode* blocknode = funcnode->branches[3];
+			checkblock(blocknode, &scope);
+		}
+		else if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
+		{
+			struct ASTNode* typenode = ast->branches[i];
+			scope_addtype(&globalscope, typenode);
+		}
+	}
+}

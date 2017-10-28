@@ -1,4 +1,4 @@
-# Gymnasiearbete - Skapa ett programmeringsspråk: Rui
+# Gymnasiearbete - Skapa ett programmeringsspråk: Erwall
 
 ## Frågeställningar
 
