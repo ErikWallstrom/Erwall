@@ -3,34 +3,149 @@
 #include "log.h"
 #include <string.h>
 
-static void checkfunccall(struct ASTNode* callnode, struct Scope* scope);
-static void checkexprtype(
-	struct ASTNode* typenode, 
+static void checkboolean(
 	struct ASTNode* exprnode, 
-	struct Scope* scope);
+	struct ASTNode* typenode, 
+	struct Scope* scope)
+{
+	if(vec_getsize(typenode->branches) == 2)
+	{
+		struct ASTNode* type = scope_gettype(scope, typenode->branches[1]);
+		checkboolean(exprnode, scope_gettype(scope, type->branches[0]), scope);
+	}
+	else //Build-in type
+	{
+		if(strcmp(typenode->branches[0]->token.text, "Bool"))
+		{
+			log_error(
+				"Semantic error: Expected type '%s', got type "
+					"'%s' (%s) (line %zu, column %zu)",
+				"Bool",
+				typenode->branches[0]->token.text,
+				exprnode->istoken ? exprnode->token.text : 
+					exprnode->branches[0]->token.text, //?
+				exprnode->istoken ? exprnode->token.line :
+					exprnode->branches[0]->token.line,
+				exprnode->istoken ? exprnode->token.column : 
+					exprnode->branches[0]->token.column
+			);
+		}
+	}
+}
 
-static struct ASTNode* getexprtype(struct ASTNode* exprnode, struct Scope* scope)
+static void checknumerical(
+	struct ASTNode* exprnode, 
+	struct ASTNode* typenode, 
+	struct Scope* scope)
+{
+	if(vec_getsize(typenode->branches) == 2)
+	{
+		struct ASTNode* type = scope_gettype(scope, typenode->branches[1]);
+		checknumerical(exprnode, scope_gettype(scope, type->branches[0]), scope);
+	}
+	else //Build-in type
+	{
+		if( strcmp(typenode->branches[0]->token.text, "Int8") &&
+			strcmp(typenode->branches[0]->token.text, "Int16") &&
+			strcmp(typenode->branches[0]->token.text, "Int32") &&
+			strcmp(typenode->branches[0]->token.text, "Int64") &&
+			strcmp(typenode->branches[0]->token.text, "UInt8") &&
+			strcmp(typenode->branches[0]->token.text, "UInt16") &&
+			strcmp(typenode->branches[0]->token.text, "UInt32") &&
+			strcmp(typenode->branches[0]->token.text, "UInt64") &&
+			strcmp(typenode->branches[0]->token.text, "Float32") &&
+			strcmp(typenode->branches[0]->token.text, "Float64")
+		)
+		{
+			log_error(
+				"Semantic error: Expected a numerical type, got type "
+					"'%s' (%s) (line %zu, column %zu)",
+				typenode->branches[0]->token.text,
+				exprnode->istoken ? exprnode->token.text : 
+					exprnode->branches[0]->token.text, //?
+				exprnode->istoken ? exprnode->token.line :
+					exprnode->branches[0]->token.line,
+				exprnode->istoken ? exprnode->token.column : 
+					exprnode->branches[0]->token.column
+			);
+		}
+	}
+}
+
+static void checkfunccall(struct ASTNode* callnode, struct Scope* scope);
+
+static struct ASTNode* getexprtype(
+	struct ASTNode* exprnode, 
+	struct Scope* scope)
 { 
 	struct ASTNode* ret = NULL;
 	if(exprnode->istoken)
 	{ 
 		if(vec_getsize(exprnode->branches) > 1)
 		{ 
-			struct ASTNode* type = getexprtype(exprnode->branches[0], scope);
-			checkexprtype(type, getexprtype(exprnode->branches[1], scope), scope);
-			ret = type;
+			struct ASTNode* type1 = getexprtype(exprnode->branches[0], scope);
+			struct ASTNode* type2 = getexprtype(exprnode->branches[1], scope);
+
+			if(strcmp(
+				type1->branches[0]->token.text, 
+				type2->branches[0]->token.text))
+			{
+				log_error(
+					"Semantic error: Expected type '%s', got type "
+						"'%s' (%s) (line %zu, column %zu)",
+					type1->branches[0]->token.text,
+					type2->branches[0]->token.text,
+					exprnode->istoken ? exprnode->token.text : 
+						exprnode->branches[0]->token.text, //?
+					exprnode->istoken ? exprnode->token.line :
+						exprnode->branches[0]->token.line,
+					exprnode->istoken ? exprnode->token.column : 
+						exprnode->branches[0]->token.column
+				);
+			}
+
+			if(exprnode->token.type == TOKENTYPE_OPERATOR_LESS ||
+				exprnode->token.type == TOKENTYPE_OPERATOR_LESSOREQUAL ||
+				exprnode->token.type == TOKENTYPE_OPERATOR_GREATER ||
+				exprnode->token.type == TOKENTYPE_OPERATOR_GREATEROREQUAL)
+			{
+				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Bool"};
+				ret = scope_gettype(scope, ast_newfromtoken(token)); //Mem leak
+				checknumerical(exprnode, type1, scope);
+			}
+			else if(exprnode->token.type == TOKENTYPE_OPERATOR_EQUAL ||
+				exprnode->token.type == TOKENTYPE_OPERATOR_NOTEQUAL)
+			{
+				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Bool"};
+				ret = scope_gettype(scope, ast_newfromtoken(token)); //Mem leak
+			}
+			else if(exprnode->token.type == TOKENTYPE_OPERATOR_OR ||
+				exprnode->token.type == TOKENTYPE_OPERATOR_AND)
+			{
+				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Bool"};
+				ret = scope_gettype(scope, ast_newfromtoken(token)); //Mem leak
+				checkboolean(exprnode, type1, scope);
+			}
+			else
+			{
+				checknumerical(exprnode, type1, scope);
+				ret = type1;
+			}
 		}
 		else if(vec_getsize(exprnode->branches) == 1) //Unary operator
 		{ 
 			ret = getexprtype(exprnode->branches[0], scope);
-			//TODO: Check if negative works on type
+			if(exprnode->token.type == TOKENTYPE_OPERATOR_NOT)
+			{
+				checkboolean(exprnode, ret, scope);
+			}
 		}
 		else //Literal/identifier
 		{ 
 			if(exprnode->token.type == TOKENTYPE_LITERAL_BOOL)
 			{ 
 				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Bool"};
-				ret = scope_gettype(scope, ast_newfromtoken(token));
+				ret = scope_gettype(scope, ast_newfromtoken(token)); //Mem leak
 			}
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_INT)
 			{ 
@@ -54,6 +169,7 @@ static struct ASTNode* getexprtype(struct ASTNode* exprnode, struct Scope* scope
 			}
 			else
 			{ 
+				log_info("Type: %s", exprnode->token.type->name);
 				log_info("This shouldn't happen 1'");
 			}
 		}
@@ -63,8 +179,12 @@ static struct ASTNode* getexprtype(struct ASTNode* exprnode, struct Scope* scope
 		if(exprnode->descriptor == ASTNODETYPE_FUNC_CALL)
 		{ 
 			checkfunccall(exprnode, scope);
-			struct ASTNode* funcnode = scope_getfunction(scope, exprnode->branches[0]);
-			if(vec_getsize(funcnode->branches[2]))
+			struct ASTNode* funcnode = scope_getfunction(
+				scope, 
+				exprnode->branches[0]
+			);
+
+			if(vec_getsize(funcnode->branches[2]->branches))
 			{ 
 				ret = scope_gettype(
 					scope, 
@@ -111,8 +231,8 @@ static void checkexprtype(
 				"'%s' (%s) (line %zu, column %zu)",
 			type1,
 			type2,
-			exprnode->istoken ? exprnode->token.text : 
-				exprnode->branches[0]->token.text, //?
+			exprnode->istoken ? exprnode->token.text : //TODO: Fix output
+				exprnode->branches[0]->token.text, 
 			exprnode->istoken ? exprnode->token.line :
 				exprnode->branches[0]->token.line,
 			exprnode->istoken ? exprnode->token.column : 
@@ -184,8 +304,6 @@ static void checkblock(struct ASTNode* blocknode, struct Scope* scope)
 				|| blocknode->branches[i]->token.type == TOKENTYPE_KEYWORD_MUT)
 			{ 
 				struct ASTNode* varnode = blocknode->branches[i];
-				scope_addvariable(scope, varnode);
-
 				struct ASTNode* valuenode = varnode->branches[2];
 				if(vec_getsize(valuenode->branches))
 				{ 
@@ -197,6 +315,8 @@ static void checkblock(struct ASTNode* blocknode, struct Scope* scope)
 
 					checkexprtype(vartype, valuenode->branches[0], scope);
 				}
+
+				scope_addvariable(scope, varnode);
 			}
 		}
 		else
