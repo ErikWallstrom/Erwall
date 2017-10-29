@@ -33,6 +33,8 @@ extern const struct TokenType* const TOKENTYPE_KEYWORD_LET;
 extern const struct TokenType* const TOKENTYPE_KEYWORD_MUT;
 extern const struct TokenType* const TOKENTYPE_KEYWORD_TYPE;
 extern const struct TokenType* const TOKENTYPE_KEYWORD_IF;
+extern const struct TokenType* const TOKENTYPE_KEYWORD_ELSEIF;
+extern const struct TokenType* const TOKENTYPE_KEYWORD_ELSE;
 extern const struct TokenType* const TOKENTYPE_OPERATOR_DECLR;
 extern const struct TokenType* const TOKENTYPE_OPERATOR_ADD;
 extern const struct TokenType* const TOKENTYPE_OPERATOR_SUB;
@@ -74,6 +76,7 @@ extern const struct TokenType* const TOKENTYPE_LCURLY;
 extern const struct TokenType* const TOKENTYPE_RCURLY;
 extern const struct TokenType* const TOKENTYPE_LBRACKET;
 extern const struct TokenType* const TOKENTYPE_RBRACKET;
+extern const struct TokenType* const TOKENTYPE_FOREIGN;
 
 struct Token
 {

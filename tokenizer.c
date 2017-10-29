@@ -28,6 +28,8 @@ const struct TokenType* const TOKENTYPE_KEYWORD_LET				= &(struct TokenType){"Ke
 const struct TokenType* const TOKENTYPE_KEYWORD_MUT 			= &(struct TokenType){"Keyword 'mut'"};
 const struct TokenType* const TOKENTYPE_KEYWORD_TYPE 			= &(struct TokenType){"Keyword 'type'"};
 const struct TokenType* const TOKENTYPE_KEYWORD_IF 				= &(struct TokenType){"Keyword 'if'"};
+const struct TokenType* const TOKENTYPE_KEYWORD_ELSEIF 			= &(struct TokenType){"Keyword 'elseif'"};
+const struct TokenType* const TOKENTYPE_KEYWORD_ELSE 			= &(struct TokenType){"Keyword 'else'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_DECLR			= &(struct TokenType){"Operator 'Declaration'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_ADD			= &(struct TokenType){"Operator 'Add'"};
 const struct TokenType* const TOKENTYPE_OPERATOR_SUB			= &(struct TokenType){"Operator 'Subtract'"};
@@ -69,6 +71,7 @@ const struct TokenType* const TOKENTYPE_LCURLY					= &(struct TokenType){"Left C
 const struct TokenType* const TOKENTYPE_RCURLY					= &(struct TokenType){"Right Curly Bracket"};
 const struct TokenType* const TOKENTYPE_LBRACKET				= &(struct TokenType){"Left Bracket"};
 const struct TokenType* const TOKENTYPE_RBRACKET				= &(struct TokenType){"Right Bracket"};
+const struct TokenType* const TOKENTYPE_FOREIGN					= &(struct TokenType){"Foreign function call"};
 
 Vec(struct Token) tokenize(const char* source)
 {
@@ -225,6 +228,16 @@ Vec(struct Token) tokenize(const char* source)
 				!memcmp("if", token.text, sizeof("if") - 1))
 			{
 				token.type = TOKENTYPE_KEYWORD_IF;
+			}
+			else if(sizeof("elseif") - 1 == vec_getsize(token.text) &&
+				!memcmp("elseif", token.text, sizeof("elseif") - 1))
+			{
+				token.type = TOKENTYPE_KEYWORD_ELSEIF;
+			}
+			else if(sizeof("else") - 1 == vec_getsize(token.text) &&
+				!memcmp("else", token.text, sizeof("else") - 1))
+			{
+				token.type = TOKENTYPE_KEYWORD_ELSE;
 			}
 			else if(sizeof("true") - 1 == vec_getsize(token.text) &&
 				!memcmp("true", token.text, sizeof("true") - 1))
@@ -532,6 +545,33 @@ Vec(struct Token) tokenize(const char* source)
 					);
 				}
 				break;
+
+			case '@':
+				column++;
+				pos++;
+
+				if(islower(source[pos]))
+				{
+					do {
+						column++;
+						vec_pushback(token.text, source[pos]);
+						pos++;
+					} 
+					while(isalnum(source[pos]) || source[pos] == '_');
+				}
+				else
+				{ 
+					log_error(
+						"Tokenizing error: Invalid foreign function call"
+							"(expected 'identifier' after '@'"
+							" (line %zu, column %zu)", 
+						line,
+						column
+					);
+				}
+
+				token.type = TOKENTYPE_FOREIGN;
+				goto done; //XXX skip vec_pushback in the end
 			
 			default:
 				log_error(
@@ -549,6 +589,7 @@ Vec(struct Token) tokenize(const char* source)
 			pos++;
 		}
 
+	done: //XXX
 		vec_pushback(token.text, '\0');
 		vec_pushback(tokens, token);
 	}

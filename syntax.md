@@ -1,18 +1,18 @@
 # Comments
 
-```
+```erwall
 # Single line comment
-#{
+#[
 	Multi line comment
-	#{
+	#[
 		Nested comment 
-	#}
-#}
+	#]
+#]
 ```
 
 # Type declaration
 
-```
+```erwall
 type TypeName: Type;
 
 type EntityID: Int64;
@@ -26,19 +26,19 @@ type Player: struct
 
 # Variable declaration
 
-```
-mut name: Type(value);
-let name: Type(value);
+```erwall
+mut name: Type = Type(value);
+let name: Type = Type(value);
 
-mut x: Int(sizeof(Float));
-let x: Int(sizeof(Float)); # Immutable
+mut x: Int = Int(sizeof(Float));
+let x: Int = Int(sizeof(Float)); # Immutable
 ```
 
 # Function declaration
 
-```
-func name: (arguments) -> return_type { }
+```erwall
+func name: (arguments) -> return_type {};
 
-func print: (text: Char[]) { }
+func print: (text: Char[]) {};
 ```
 

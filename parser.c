@@ -332,6 +332,7 @@ static struct ASTNode* parse_typedeclr(struct Parser* parser)
 
 	ast_addbranch(typedeclrnode, newtypenode);
 	ast_addbranch(typedeclrnode, typenode);
+	parser_expect(parser, TOKENTYPE_END);
 
 	return typedeclrnode;
 }
@@ -351,11 +352,12 @@ static struct ASTNode* parse_block(struct Parser* parser)
 		if(parser_check(parser, TOKENTYPE_KEYWORD_FUNC))
 		{ 
 			ast_addbranch(blocknode, parse_function(parser));
-			continue; //Don't expect semicolon in the end
+			continue; //Don't require semicolon
 		}
 		else if(parser_check(parser, TOKENTYPE_KEYWORD_TYPE))
 		{ 
 			ast_addbranch(blocknode, parse_typedeclr(parser));
+			continue; //Don't require semicolon
 		}
 		else if(parser_check(parser, TOKENTYPE_KEYWORD_LET))
 		{
@@ -431,9 +433,31 @@ static struct ASTNode* parse_block(struct Parser* parser)
 			ast_addbranch(ifnode, parse_expression(parser));
 			parser_expect(parser, TOKENTYPE_RPAREN);
 			ast_addbranch(ifnode, parse_block(parser));
-			ast_addbranch(blocknode, ifnode);
 
-			continue; //Don't expect semicolon in the end
+			while(parser_check(parser, TOKENTYPE_KEYWORD_ELSEIF))
+			{ 
+				struct ASTNode* elseifnode = ast_newfromtoken(
+					parser_expect(parser, TOKENTYPE_KEYWORD_ELSEIF)
+				);
+				
+				parser_expect(parser, TOKENTYPE_LPAREN);
+				ast_addbranch(elseifnode, parse_expression(parser));
+				parser_expect(parser, TOKENTYPE_RPAREN);
+				ast_addbranch(elseifnode, parse_block(parser));
+				ast_addbranch(ifnode, elseifnode);
+			}
+
+			if(parser_check(parser, TOKENTYPE_KEYWORD_ELSE))
+			{ 
+				struct ASTNode* elsenode = ast_newfromtoken(
+					parser_expect(parser, TOKENTYPE_KEYWORD_ELSE)
+				);
+				ast_addbranch(elsenode, parse_block(parser));
+				ast_addbranch(ifnode, elsenode);
+			}
+
+			ast_addbranch(blocknode, ifnode);
+			continue; //Don't require semicolon
 		}
 		else if(parser_check(parser, TOKENTYPE_KEYWORD_RETURN))
 		{ 
@@ -443,6 +467,36 @@ static struct ASTNode* parse_block(struct Parser* parser)
 
 			ast_addbranch(retnode, parse_expression(parser));
 			ast_addbranch(blocknode, retnode);
+		}
+		else if(parser_check(parser, TOKENTYPE_FOREIGN))
+		{ 
+			struct ASTNode* foreign = ast_newfromtoken(
+				parser_expect(parser, TOKENTYPE_FOREIGN)
+			);
+
+			struct ASTNode* argsnode = ast_newfromnodetype(
+				ASTNODETYPE_FUNC_ARGS
+			);
+
+			parser_expect(parser, TOKENTYPE_LPAREN);
+			while(!parser_check(parser, TOKENTYPE_RPAREN))
+			{
+				struct ASTNode* argument = parse_expression(parser);
+				ast_addbranch(argsnode, argument);
+
+				if(parser_check(parser, TOKENTYPE_COMMA))
+				{
+					parser_expect(parser, TOKENTYPE_COMMA);
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			parser_expect(parser, TOKENTYPE_RPAREN);
+			ast_addbranch(foreign, argsnode);
+			ast_addbranch(blocknode, foreign);
 		}
 		else
 		{ 
@@ -460,7 +514,6 @@ static struct ASTNode* parse_block(struct Parser* parser)
 	}
 
 	parser_expect(parser, TOKENTYPE_RCURLY);
-	parser_expect(parser, TOKENTYPE_END);
 	return blocknode;
 }
 
@@ -568,7 +621,6 @@ struct ASTNode* parse(Vec(struct Token) tokens)
 		else if(parser_check(&parser, TOKENTYPE_KEYWORD_TYPE))
 		{ 
 			ast_addbranch(root, parse_typedeclr(&parser));
-			parser_expect(&parser, TOKENTYPE_END);
 		}
 		else
 		{

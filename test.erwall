@@ -1,12 +1,7 @@
-func main: () -> Int32
-{
-	type Int: Int32;
+type Int: Int32;
 
-	let x: Int = Int(64);
-	let y: Int = Int(3) + x;
-	
-	if(x == 10)
-	{
-		
-	};
-};
+func main: (let y: Int) -> Int
+{ 
+	let x: Int = Int(12);
+	return x;
+}

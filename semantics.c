@@ -139,6 +139,10 @@ static struct ASTNode* getexprtype(
 			{
 				checkboolean(exprnode, ret, scope);
 			}
+			else if(exprnode->token.type ==  TOKENTYPE_OPERATOR_SUB)
+			{
+				checknumerical(exprnode, ret, scope);
+			}
 		}
 		else //Literal/identifier
 		{ 
@@ -169,7 +173,6 @@ static struct ASTNode* getexprtype(
 			}
 			else
 			{ 
-				log_info("Type: %s", exprnode->token.type->name);
 				log_info("This shouldn't happen 1'");
 			}
 		}
@@ -272,7 +275,10 @@ static void checkfunccall(struct ASTNode* callnode, struct Scope* scope)
 	}
 }
 
-static void checkblock(struct ASTNode* blocknode, struct Scope* scope)
+static void checkblock(
+	struct ASTNode* parentfuncnode, 
+	struct ASTNode* blocknode, 
+	struct Scope* scope)
 { 
 	for(size_t i = 0; i < vec_getsize(blocknode->branches); i++)
 	{ 
@@ -292,7 +298,7 @@ static void checkblock(struct ASTNode* blocknode, struct Scope* scope)
 				}
 
 				struct ASTNode* newblocknode = funcnode->branches[3];
-				checkblock(newblocknode, &newscope);
+				checkblock(funcnode, newblocknode, &newscope);
 			}
 			else if(blocknode->branches[i]->token.type == 
 				TOKENTYPE_KEYWORD_TYPE)
@@ -317,6 +323,39 @@ static void checkblock(struct ASTNode* blocknode, struct Scope* scope)
 				}
 
 				scope_addvariable(scope, varnode);
+			}
+			else if(blocknode->branches[i]->token.type == TOKENTYPE_KEYWORD_IF)
+			{ 
+				struct ASTNode* ifnode = blocknode->branches[i];
+				struct ASTNode* ifexpr = ifnode->branches[0];
+				struct ASTNode* iftype = getexprtype(ifexpr, scope);
+				checkboolean(ifexpr, iftype, scope);
+
+				for(size_t j = 2; j < vec_getsize(ifnode->branches); j++)
+				{ 
+					if(ifnode->branches[j]->token.type == 
+						TOKENTYPE_KEYWORD_ELSEIF)
+					{ 
+						struct ASTNode* elseifexpr = ifnode->branches[j]->
+							branches[0];
+						struct ASTNode* elseiftype = getexprtype(
+							elseifexpr, 
+							scope
+						);
+						checkboolean(elseifexpr, elseiftype, scope);
+					}
+				}
+			}
+			else if(blocknode->branches[i]->token.type == 
+				TOKENTYPE_KEYWORD_RETURN)
+			{ 
+				struct ASTNode* retnode = blocknode->branches[i];
+				struct ASTNode* rettype = scope_gettype(
+					scope, 
+					parentfuncnode->branches[2]->branches[0]
+				);
+
+				checkexprtype(rettype, retnode->branches[0], scope);
 			}
 		}
 		else
@@ -362,12 +401,20 @@ void checksemantics(struct ASTNode* ast)
 		scope_addtype(&globalscope, node);
 	}
 
+	int hasmain = 0;
 	for(size_t i = 0; i < vec_getsize(ast->branches); i++)
 	{
 		if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
 		{
 			struct ASTNode* funcnode = ast->branches[i];
 			scope_addfunction(&globalscope, funcnode);
+
+			if(!strcmp(funcnode->branches[0]->token.text, "main"))
+			{ 
+				log_assert(!hasmain, "this should not happen");
+				hasmain = 1;
+			}
+
 			struct Scope scope;
 			scope_ctor(&scope, &globalscope);
 
@@ -378,12 +425,17 @@ void checksemantics(struct ASTNode* ast)
 			}
 
 			struct ASTNode* blocknode = funcnode->branches[3];
-			checkblock(blocknode, &scope);
+			checkblock(funcnode, blocknode, &scope);
 		}
 		else if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
 		{
 			struct ASTNode* typenode = ast->branches[i];
 			scope_addtype(&globalscope, typenode);
 		}
+	}
+
+	if(!hasmain)
+	{ 
+		log_error("Semantic error: Expected a main function");
 	}
 }
