@@ -278,7 +278,8 @@ static void checkfunccall(struct ASTNode* callnode, struct Scope* scope)
 static void checkblock(
 	struct ASTNode* parentfuncnode, 
 	struct ASTNode* blocknode, 
-	struct Scope* scope)
+	struct Scope* scope,
+	struct Scope* globalscope)
 { 
 	for(size_t i = 0; i < vec_getsize(blocknode->branches); i++)
 	{ 
@@ -289,7 +290,7 @@ static void checkblock(
 				struct ASTNode* funcnode = blocknode->branches[i];
 				scope_addfunction(scope, funcnode);
 				struct Scope newscope;
-				scope_ctor(&newscope, scope);
+				scope_ctor(&newscope, globalscope);
 
 				struct ASTNode* argsnode = funcnode->branches[1];
 				for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
@@ -298,7 +299,7 @@ static void checkblock(
 				}
 
 				struct ASTNode* newblocknode = funcnode->branches[3];
-				checkblock(funcnode, newblocknode, &newscope);
+				checkblock(funcnode, newblocknode, &newscope, globalscope);
 			}
 			else if(blocknode->branches[i]->token.type == 
 				TOKENTYPE_KEYWORD_TYPE)
@@ -425,7 +426,7 @@ void checksemantics(struct ASTNode* ast)
 			}
 
 			struct ASTNode* blocknode = funcnode->branches[3];
-			checkblock(funcnode, blocknode, &scope);
+			checkblock(funcnode, blocknode, &scope, &globalscope);
 		}
 		else if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
 		{

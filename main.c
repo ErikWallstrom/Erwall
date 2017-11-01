@@ -21,49 +21,208 @@
 #include "semantics.h"
 #include "file.h"
 #include "log.h"
+#include "str.h"
 
-Vec(char) generate(struct ASTNode* ast)
+#include <stdlib.h>
+
+void generateblock(
+	struct Str* ccode, 
+	struct ASTNode* block, 
+	size_t funcpos,
+	const char* funcname)
 { 
-	Vec(char) ccode = vec_ctor(char, 0);
+	for(size_t i = 0; i < vec_getsize(block->branches); i++)
+	{ 
+		if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
+		{ 
+			struct ASTNode* funcnode = block->branches[i];
+			struct ASTNode* blocknode = funcnode->branches[3];
+			struct ASTNode* retnode = funcnode->branches[2];
+			struct ASTNode* namenode = funcnode->branches[0];
+			struct ASTNode* argsnode = funcnode->branches[1];
+
+			struct Str funccode;
+			str_ctor(&funccode, "");
+
+			if(vec_getsize(retnode->branches))
+			{ 
+				str_appendfmt(
+					&funccode, 
+					"\nerwall_%s ", 
+					retnode->branches[0]->token.text
+				);
+			}
+			else
+			{ 
+				str_append(&funccode, "\nvoid ");
+			}
+
+			str_appendfmt(
+				&funccode, 
+				"erwall_%s_%s(", 
+				funcname,
+				namenode->token.text
+			); 
+
+			int first = 1;
+			for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
+			{ 
+				if(!first)
+				{ 
+					str_append(&funccode, ", ");
+				}
+
+				struct ASTNode* varnode = argsnode->branches[j];
+				if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
+				{ 
+					str_append(&funccode, "const ");
+				}
+
+				str_appendfmt(
+					&funccode, 
+					"erwall_%s %s", 
+					varnode->branches[1]->token.text,
+					varnode->branches[0]->token.text
+				);
+				
+				first = 0;
+			}
+
+			str_append(&funccode, ")\n{\n");
+			generateblock(ccode, blocknode, funcpos, namenode->token.text);
+			str_append(&funccode, "\n}\n");
+
+			str_insert(ccode, funcpos, funccode.data);
+			str_dtor(&funccode);
+		}
+		else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
+		{ 
+			struct ASTNode* typenode = block->branches[i];
+			str_appendfmt(
+				ccode, 
+				"typedef erwall_%s erwall_%s;\n", 
+				typenode->branches[1]->token.text,
+				typenode->branches[0]->token.text
+			);
+		}
+	}
+}
+
+struct Str generate(struct ASTNode* ast)
+{ 
 	const char header[] = { 
 		"#include <inttypes.h>\n\n"
 
-		"typedef int8_t		Int8;\n"
-		"typedef int16_t 	Int16;\n"
-		"typedef int32_t 	Int32;\n"
-		"typedef int64_t 	Int64;\n"
-		"typedef uint8_t 	UInt8;\n"
-		"typedef uint16_t 	UInt16;\n"
-		"typedef uint32_t 	UInt32;\n"
-		"typedef uint64_t	UInt64;\n"
-		"typedef float		Float32;\n" //XXX: This doesn't seem to be portable
-		"typedef double		Float64;\n" //XXX: This doesn't seem to be portable
-		"typedef _Bool		Bool;\n\n"
+		"typedef int8_t		erwall_Int8;\n"
+		"typedef int16_t 	erwall_Int16;\n"
+		"typedef int32_t 	erwall_Int32;\n"
+		"typedef int64_t 	erwall_Int64;\n"
+		"typedef uint8_t 	erwall_UInt8;\n"
+		"typedef uint16_t 	erwall_UInt16;\n"
+		"typedef uint32_t 	erwall_UInt32;\n"
+		"typedef uint64_t	erwall_UInt64;\n"
+		"typedef float		erwall_Float32;\n" //XXX: Not portable
+		"typedef double		erwall_Float64;\n" //XXX: Not portable
+		"typedef _Bool		erwall_Bool;\n\n"
 	};
 
 	const char footer[] = { 
-		"int main(int argc, char* argv[])\n"
+		"\nint main(int argc, char* argv[])\n"
 		"{\n"
-		"	\n"
+		"	return erwall_main();\n"
 		"}\n"
 	};
 
-	vec_pushbackwitharr(ccode, header, sizeof(header) - 1);
-	// *Generate code from AST here*
-	vec_pushbackwitharr(ccode, footer, sizeof(footer));
+	struct Str ccode;
+	str_ctor(&ccode, header);
 
+	for(size_t i = 0; i < vec_getsize(ast->branches); i++)
+	{ 
+		if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
+		{ 
+			size_t funcpos = ccode.len;
+
+			struct ASTNode* funcnode = ast->branches[i];
+			struct ASTNode* blocknode = funcnode->branches[3];
+			struct ASTNode* retnode = funcnode->branches[2];
+			struct ASTNode* namenode = funcnode->branches[0];
+			struct ASTNode* argsnode = funcnode->branches[1];
+
+			if(vec_getsize(retnode->branches))
+			{ 
+				str_appendfmt(
+					&ccode, 
+					"\nerwall_%s ", 
+					retnode->branches[0]->token.text
+				);
+			}
+			else
+			{ 
+				str_append(&ccode, "\nvoid ");
+			}
+
+			str_appendfmt(&ccode, "erwall_%s(", namenode->token.text); 
+			int first = 1;
+			for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
+			{ 
+				if(!first)
+				{ 
+					str_append(&ccode, ", ");
+				}
+
+				struct ASTNode* varnode = argsnode->branches[j];
+				if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
+				{ 
+					str_append(&ccode, "const ");
+				}
+
+				str_appendfmt(
+					&ccode, 
+					"erwall_%s %s", 
+					varnode->branches[1]->token.text,
+					varnode->branches[0]->token.text
+				);
+
+				first = 0;
+			}
+
+			str_append(&ccode, ")\n{\n");
+			generateblock(&ccode, blocknode, funcpos, namenode->token.text);
+			str_append(&ccode, "\n}\n");
+		}
+		else if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
+		{ 
+			struct ASTNode* typenode = ast->branches[i];
+			str_appendfmt(
+				&ccode, 
+				"typedef erwall_%s erwall_%s;\n", 
+				typenode->branches[1]->token.text,
+				typenode->branches[0]->token.text
+			);
+		}
+	}
+
+	str_append(&ccode, footer);
 	return ccode;
+}
+
+void onerror(void* udata)
+{ 
+	(void)udata;
+	abort();
 }
 
 int main(int argc, char* argv[])
 {
-	log_seterrorfatal(NULL, NULL);
+	log_seterrorhandler(onerror, NULL);
 	if(argc == 2)
 	{
 		struct File file;
 		file_ctor(&file, argv[1], FILEMODE_READ);
 		Vec(struct Token) tokens = tokenize(file.content);
 		struct ASTNode* ast = parse(tokens);
+		checksemantics(ast);
+		struct Str ccode = generate(ast);
 
 		struct ANSICode titlecolor = {
 			.fg = ANSICODE_FG_GREEN, 
@@ -87,18 +246,13 @@ int main(int argc, char* argv[])
 		ast_print(ast);
 		putchar('\n');
 
-		checksemantics(ast);
-		/*
-		Vec(char) ccode = generate(ast);
-
 		ansicode_printf(&titlecolor, "C Output:\n\n");
-		printf("%s", ccode);
+		printf("%s", ccode.data);
 		putchar('\n');
-		*/
 
 		//Cleanup
 		//TODO: Cleanup of scopes
-		//vec_dtor(ccode);
+		str_dtor(&ccode);
 		ast_dtor(ast);
 
 		for(size_t i = 0; i < vec_getsize(tokens); i++)

@@ -1,7 +1,17 @@
 type Int: Int32;
 
-func main: (let y: Int) -> Int
+func main: (let y: Int32) -> Int32
 { 
-	let x: Int = Int(12);
-	return x;
+	func test: (let z: Int, let x: Int)
+	{ 
+		func lol: (let z: Int, let x: Int)
+		{ 
+		}
+	}
+
+	func xd: (let z: Int, let x: Int)
+	{ 
+	}
+
+
 }

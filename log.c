@@ -22,7 +22,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-static int errorfatal;
 static LogErrorCallback errorcallback;
 static void* errorudata;
 
@@ -95,19 +94,17 @@ void log_msg(FILE* file, enum LogMsgType type, const char* fmt, ...)
 	fputs("\n", file);
 	va_end(vlist);
 
-	if(type == LOGMSGTYPE_ERROR && errorfatal)
+	if(type == LOGMSGTYPE_ERROR)
 	{
 		if(errorcallback)
 		{
 			errorcallback(errorudata);
 		}
-		abort(); //Should this be exit(EXIT_FAILURE)?
 	}
 }
 
-void log_seterrorfatal(LogErrorCallback callback, void* udata)
+void log_seterrorhandler(LogErrorCallback callback, void* udata)
 {
-	errorfatal = 1;
 	errorcallback = callback;
 	errorudata = udata;
 }
