@@ -17,6 +17,7 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "argparser.h"
 #include "ansicodes.h"
 #include "semantics.h"
 #include "file.h"
@@ -206,6 +207,12 @@ struct Str generate(struct ASTNode* ast)
 	return ccode;
 }
 
+void onargerror(void* udata)
+{ 
+	argparser_printhelp(udata);
+	abort();
+}
+
 void onerror(void* udata)
 { 
 	(void)udata;
@@ -214,41 +221,67 @@ void onerror(void* udata)
 
 int main(int argc, char* argv[])
 {
-	log_seterrorhandler(onerror, NULL);
-	if(argc == 2)
-	{
-		struct File file;
-		file_ctor(&file, argv[1], FILEMODE_READ);
-		Vec(struct Token) tokens = tokenize(file.content);
-		struct ASTNode* ast = parse(tokens);
-		checksemantics(ast);
-		struct Str ccode = generate(ast);
+	struct ArgParserLongOpt options[] = { 
+		{"file", "Which file to compile", 1},
+		{"tokenize", "Output tokens", 0},
+		{"parse", "Output abstract syntax tree", 0},
+		{"generate", "Output C code", 0},
+	};
 
+	struct ArgParser argparser;
+	log_seterrorhandler(onargerror, &argparser);
+	argparser_ctor(
+		&argparser, 
+		argc, 
+		argv, 
+		options, 
+		sizeof options / sizeof *options
+	);
+
+	if(argparser.results[0].used)
+	{
+		log_seterrorhandler(onerror, NULL);
 		struct ANSICode titlecolor = {
 			.fg = ANSICODE_FG_GREEN, 
 			.bold = 1, 
 			.underline = 1
 		};
 
-		//Print out
-		ansicode_printf(&titlecolor, "\nTokens:\n\n");
-		for(size_t i = 0; i < vec_getsize(tokens); i++)
-		{
-			printf("%s: ", tokens[i].type->name);
-			struct ANSICode color = {
-				.fg = ANSICODE_FG_BLUE, 
-				.bold = 1, 
-			};
-			ansicode_printf(&color, "%s\n", tokens[i].text);
+		struct File file;
+		file_ctor(&file, argparser.results[0].arg, FILEMODE_READ);
+		Vec(struct Token) tokens = tokenize(file.content);
+
+		if(argparser.results[1].used)
+		{ 
+			ansicode_printf(&titlecolor, "\nTokens:\n\n");
+			for(size_t i = 0; i < vec_getsize(tokens); i++)
+			{
+				printf("%s: ", tokens[i].type->name);
+				struct ANSICode color = {
+					.fg = ANSICODE_FG_BLUE, 
+					.bold = 1, 
+				};
+				ansicode_printf(&color, "%s\n}n", tokens[i].text);
+			}
 		}
 
-		ansicode_printf(&titlecolor, "\nAbstract Syntax Tree:\n\n");
-		ast_print(ast);
-		putchar('\n');
+		struct ASTNode* ast = parse(tokens);
 
-		ansicode_printf(&titlecolor, "C Output:\n\n");
-		printf("%s", ccode.data);
-		putchar('\n');
+		if(argparser.results[2].used)
+		{ 
+			ansicode_printf(&titlecolor, "\nAbstract Syntax Tree:\n\n");
+			ast_print(ast);
+			putchar('\n');
+		}
+
+		checksemantics(ast);
+		struct Str ccode = generate(ast);
+
+		if(argparser.results[3].used)
+		{ 
+			ansicode_printf(&titlecolor, "C Output:\n\n");
+			printf("%s\n", ccode.data);
+		}
 
 		//Cleanup
 		//TODO: Cleanup of scopes
@@ -269,5 +302,7 @@ int main(int argc, char* argv[])
 			"Expected one file as argument. Exiting without doing anything..."
 		);
 	}
+
+	argparser_dtor(&argparser);
 }
 
