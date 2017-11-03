@@ -41,7 +41,11 @@ static void checknumerical(
 	if(vec_getsize(typenode->branches) == 2)
 	{
 		struct ASTNode* type = scope_gettype(scope, typenode->branches[1]);
-		checknumerical(exprnode, scope_gettype(scope, type->branches[0]), scope);
+		checknumerical(
+			exprnode, 
+			scope_gettype(scope, type->branches[0]), 
+			scope
+		);
 	}
 	else //Build-in type
 	{
@@ -158,7 +162,10 @@ static struct ASTNode* getexprtype(
 			}
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_FLOAT)
 			{ 
-				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Float32"};
+				struct Token token = {
+					.type = TOKENTYPE_TYPE, 
+					.text = "Float32"
+				};
 				ret = scope_gettype(scope, ast_newfromtoken(token));
 			}
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_CHAR)

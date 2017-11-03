@@ -19,192 +19,47 @@
 
 #include "argparser.h"
 #include "ansicodes.h"
-#include "semantics.h"
+#include "generator.h"
 #include "file.h"
 #include "log.h"
-#include "str.h"
 
 #include <stdlib.h>
 
-void generateblock(
-	struct Str* ccode, 
-	struct ASTNode* block, 
-	size_t funcpos,
-	const char* funcname)
+void compile(struct Str* ccode, const char* filename)
 { 
-	for(size_t i = 0; i < vec_getsize(block->branches); i++)
+	struct Str cfilename;
+	str_ctorfmt(
+		&cfilename, 
+		"%.*s.c", 
+		(int)(strchr(filename, '.') - filename), 
+		filename
+	);
+
+	struct File cfile;
+	file_ctor(&cfile, cfilename.data, FILEMODE_WRITE);
+	vec_pushwitharr(cfile.content, ccode->data, ccode->len);
+	file_dtor(&cfile);
+
+	struct Str command;
+	str_ctorfmt(
+		&command, 
+		"gcc %s -o %.*s -Wall -Wextra -Wshadow -Wstrict-prototypes"
+		" -Wdouble-promotion -Wjump-misses-init -Wnull-dereference -Wrestrict"
+		" -Wlogical-op -Wduplicated-branches -Wduplicated-cond -Og -g3 -lm",
+		cfilename.data,
+		(int)(strchr(filename, '.') - filename), 
+		filename
+	);
+
+	log_info("%s", command.data);
+	int ret = system(command.data);
+	if(ret) //NOTE: This does not seem to work
 	{ 
-		if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
-		{ 
-			struct ASTNode* funcnode = block->branches[i];
-			struct ASTNode* blocknode = funcnode->branches[3];
-			struct ASTNode* retnode = funcnode->branches[2];
-			struct ASTNode* namenode = funcnode->branches[0];
-			struct ASTNode* argsnode = funcnode->branches[1];
-
-			struct Str funccode;
-			str_ctor(&funccode, "");
-
-			if(vec_getsize(retnode->branches))
-			{ 
-				str_appendfmt(
-					&funccode, 
-					"\nerwall_%s ", 
-					retnode->branches[0]->token.text
-				);
-			}
-			else
-			{ 
-				str_append(&funccode, "\nvoid ");
-			}
-
-			str_appendfmt(
-				&funccode, 
-				"erwall_%s_%s(", 
-				funcname,
-				namenode->token.text
-			); 
-
-			int first = 1;
-			for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
-			{ 
-				if(!first)
-				{ 
-					str_append(&funccode, ", ");
-				}
-
-				struct ASTNode* varnode = argsnode->branches[j];
-				if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
-				{ 
-					str_append(&funccode, "const ");
-				}
-
-				str_appendfmt(
-					&funccode, 
-					"erwall_%s %s", 
-					varnode->branches[1]->token.text,
-					varnode->branches[0]->token.text
-				);
-				
-				first = 0;
-			}
-
-			str_append(&funccode, ")\n{\n");
-			generateblock(ccode, blocknode, funcpos, namenode->token.text);
-			str_append(&funccode, "\n}\n");
-
-			str_insert(ccode, funcpos, funccode.data);
-			str_dtor(&funccode);
-		}
-		else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
-		{ 
-			struct ASTNode* typenode = block->branches[i];
-			str_appendfmt(
-				ccode, 
-				"typedef erwall_%s erwall_%s;\n", 
-				typenode->branches[1]->token.text,
-				typenode->branches[0]->token.text
-			);
-		}
-	}
-}
-
-struct Str generate(struct ASTNode* ast)
-{ 
-	const char header[] = { 
-		"#include <inttypes.h>\n\n"
-
-		"typedef int8_t		erwall_Int8;\n"
-		"typedef int16_t 	erwall_Int16;\n"
-		"typedef int32_t 	erwall_Int32;\n"
-		"typedef int64_t 	erwall_Int64;\n"
-		"typedef uint8_t 	erwall_UInt8;\n"
-		"typedef uint16_t 	erwall_UInt16;\n"
-		"typedef uint32_t 	erwall_UInt32;\n"
-		"typedef uint64_t	erwall_UInt64;\n"
-		"typedef float		erwall_Float32;\n" //XXX: Not portable
-		"typedef double		erwall_Float64;\n" //XXX: Not portable
-		"typedef _Bool		erwall_Bool;\n\n"
-	};
-
-	const char footer[] = { 
-		"\nint main(int argc, char* argv[])\n"
-		"{\n"
-		"	return erwall_main();\n"
-		"}\n"
-	};
-
-	struct Str ccode;
-	str_ctor(&ccode, header);
-
-	for(size_t i = 0; i < vec_getsize(ast->branches); i++)
-	{ 
-		if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
-		{ 
-			size_t funcpos = ccode.len;
-
-			struct ASTNode* funcnode = ast->branches[i];
-			struct ASTNode* blocknode = funcnode->branches[3];
-			struct ASTNode* retnode = funcnode->branches[2];
-			struct ASTNode* namenode = funcnode->branches[0];
-			struct ASTNode* argsnode = funcnode->branches[1];
-
-			if(vec_getsize(retnode->branches))
-			{ 
-				str_appendfmt(
-					&ccode, 
-					"\nerwall_%s ", 
-					retnode->branches[0]->token.text
-				);
-			}
-			else
-			{ 
-				str_append(&ccode, "\nvoid ");
-			}
-
-			str_appendfmt(&ccode, "erwall_%s(", namenode->token.text); 
-			int first = 1;
-			for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
-			{ 
-				if(!first)
-				{ 
-					str_append(&ccode, ", ");
-				}
-
-				struct ASTNode* varnode = argsnode->branches[j];
-				if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
-				{ 
-					str_append(&ccode, "const ");
-				}
-
-				str_appendfmt(
-					&ccode, 
-					"erwall_%s %s", 
-					varnode->branches[1]->token.text,
-					varnode->branches[0]->token.text
-				);
-
-				first = 0;
-			}
-
-			str_append(&ccode, ")\n{\n");
-			generateblock(&ccode, blocknode, funcpos, namenode->token.text);
-			str_append(&ccode, "\n}\n");
-		}
-		else if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
-		{ 
-			struct ASTNode* typenode = ast->branches[i];
-			str_appendfmt(
-				&ccode, 
-				"typedef erwall_%s erwall_%s;\n", 
-				typenode->branches[1]->token.text,
-				typenode->branches[0]->token.text
-			);
-		}
+		log_error("C Compilation failed");
 	}
 
-	str_append(&ccode, footer);
-	return ccode;
+	str_dtor(&command);
+	str_dtor(&cfilename);
 }
 
 void onargerror(void* udata)
@@ -283,6 +138,8 @@ int main(int argc, char* argv[])
 			printf("%s\n", ccode.data);
 		}
 
+		compile(&ccode, argparser.results[0].arg);
+
 		//Cleanup
 		//TODO: Cleanup of scopes
 		str_dtor(&ccode);
@@ -298,9 +155,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		log_warning(
-			"Expected one file as argument. Exiting without doing anything..."
-		);
+		log_error("Expected a file as argument");
 	}
 
 	argparser_dtor(&argparser);

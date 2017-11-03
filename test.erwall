@@ -1,17 +1,7 @@
 type Int: Int32;
 
-func main: (let y: Int32) -> Int32
+func main: () -> Int32
 { 
-	func test: (let z: Int, let x: Int)
-	{ 
-		func lol: (let z: Int, let x: Int)
-		{ 
-		}
-	}
-
-	func xd: (let z: Int, let x: Int)
-	{ 
-	}
-
-
+	let x: Int32 = 3 + 3 * 4 - 3^2;
+	@printf("%i\n", x);
 }

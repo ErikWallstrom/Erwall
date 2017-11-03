@@ -43,11 +43,11 @@
 * Arrays as first-class citizens
 * Size of arrays known
 * Compile time bounds checking (zero cost)
-* Strict types (no implicit int to float or enum to int conversions)
+* Strict types (no implicit int to float or enum to int conversions) ✔
 * Tagged unions by default
-* Nested comments
+* Nested comments ✔
 * References (non-null pointers)
-* Function definitions in functions
+* Function definitions in functions ✔
 * Defer (like Go)
 * Anonymous struct in structs (like Go)
 * Compatible with C
