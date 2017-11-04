@@ -325,15 +325,18 @@ static struct ASTNode* parse_typedeclr(struct Parser* parser)
 		parser_expect(parser, TOKENTYPE_TYPE)
 	);
 
-	parser_expect(parser, TOKENTYPE_OPERATOR_DECLR);
-	struct ASTNode* typenode = ast_newfromtoken(
-		parser_expect(parser, TOKENTYPE_TYPE)
-	);
-
 	ast_addbranch(typedeclrnode, newtypenode);
-	ast_addbranch(typedeclrnode, typenode);
-	parser_expect(parser, TOKENTYPE_END);
+	if(parser_check(parser, TOKENTYPE_OPERATOR_DECLR))
+	{ 
+		parser_expect(parser, TOKENTYPE_OPERATOR_DECLR);
+		struct ASTNode* typenode = ast_newfromtoken(
+			parser_expect(parser, TOKENTYPE_TYPE)
+		);
 
+		ast_addbranch(typedeclrnode, typenode);
+	}
+
+	parser_expect(parser, TOKENTYPE_END);
 	return typedeclrnode;
 }
 

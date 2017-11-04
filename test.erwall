@@ -1,16 +1,29 @@
-type Int: Int32;
+type None;
 
-func loop: (let times: UInt32)
+func test: ()
 { 
-	@printf("Loop iteration: %u\n", times);
-	if(times > UInt32(0))
+	func fib: (let x: UInt64) -> UInt64
 	{ 
-		loop(times - UInt32(1));
+		if(x == UInt64(0))
+		{ 
+			return UInt64(0);
+		}
+		elseif(x == UInt64(1) || x == UInt64(2))
+		{ 
+			return UInt64(1);
+		}
+		else
+		{ 
+			return fib(x - UInt64(2)) + fib(x - UInt64(1));
+		}
 	}
+
+	@printf("%lu\n", fib(UInt64(40)));
 }
 
 func main: () -> Int32
 { 
-	loop(UInt32(13) - UInt32(2));
+	test();
 	return 0;
 }
+

@@ -126,6 +126,27 @@ static void generateexpr(struct Str* ccode, struct ASTNode* exprnode)
 	}
 }
 
+static void generatetypedeclr(struct Str* ccode, struct ASTNode* typenode)
+{ 
+	if(vec_getsize(typenode->branches) == 1)
+	{ 
+		str_appendfmt(
+			ccode, 
+			"typedef struct {char _;} erwall_%s;\n", 
+			typenode->branches[0]->token.text
+		);
+	}
+	else
+	{ 
+		str_appendfmt(
+			ccode, 
+			"typedef erwall_%s erwall_%s;\n", 
+			typenode->branches[1]->token.text,
+			typenode->branches[0]->token.text
+		);
+	}
+}
+
 static void generateblock(
 	struct Str* ccode, 
 	struct ASTNode* block, 
@@ -213,11 +234,11 @@ static void generateblock(
 
 				str_append(&funccode, ")\n");
 				generateblock(
-					ccode, 
+					&funccode, 
 					blocknode, 
 					funcpos, 
 					namenode->token.text,
-					indentlvl + 1
+					0
 				);
 
 				str_insert(ccode, funcpos, funccode.data);
@@ -226,12 +247,7 @@ static void generateblock(
 			else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
 			{ 
 				struct ASTNode* typenode = block->branches[i];
-				str_appendfmt(
-					ccode, 
-					"\ttypedef erwall_%s erwall_%s;\n", 
-					typenode->branches[1]->token.text,
-					typenode->branches[0]->token.text
-				);
+				generatetypedeclr(ccode, typenode);
 			}
 			else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_LET)
 			{ 
@@ -472,12 +488,7 @@ struct Str generate(struct ASTNode* ast)
 		else if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
 		{ 
 			struct ASTNode* typenode = ast->branches[i];
-			str_appendfmt(
-				&ccode, 
-				"typedef erwall_%s erwall_%s;\n", 
-				typenode->branches[1]->token.text,
-				typenode->branches[0]->token.text
-			);
+			generatetypedeclr(&ccode, typenode);
 		}
 	}
 
