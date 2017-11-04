@@ -44,8 +44,9 @@ void compile(struct Str* ccode, const char* filename)
 	str_ctorfmt(
 		&command, 
 		"gcc %s -o %.*s -Wall -Wextra -Wshadow -Wstrict-prototypes"
-		" -Wdouble-promotion -Wjump-misses-init -Wnull-dereference -Wrestrict"
-		" -Wlogical-op -Wduplicated-branches -Wduplicated-cond -Og -g3 -lm",
+			" -Wdouble-promotion -Wjump-misses-init -Wnull-dereference"
+			" -Wrestrict -Wlogical-op -Wduplicated-branches -Wduplicated-cond"
+			" -O3 -march=native -mtune=native -lm", //Should this be -O2?
 		cfilename.data,
 		(int)(strchr(filename, '.') - filename), 
 		filename
@@ -81,6 +82,7 @@ int main(int argc, char* argv[])
 		{"tokenize", "Output tokens", 0},
 		{"parse", "Output abstract syntax tree", 0},
 		{"generate", "Output C code", 0},
+		{"compile", "Compile the C code", 0},
 	};
 
 	struct ArgParser argparser;
@@ -138,8 +140,11 @@ int main(int argc, char* argv[])
 			printf("%s\n", ccode.data);
 		}
 
-		ansicode_printf(&titlecolor, "\nCompilation Output:\n\n");
-		compile(&ccode, argparser.results[0].arg);
+		if(argparser.results[4].used)
+		{ 
+			ansicode_printf(&titlecolor, "\nCompilation Output:\n\n");
+			compile(&ccode, argparser.results[0].arg);
+		}
 
 		//Cleanup
 		//TODO: Cleanup of scopes
