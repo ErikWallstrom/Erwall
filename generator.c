@@ -97,7 +97,7 @@ static void generateexpr(struct Str* ccode, struct ASTNode* exprnode)
 	{ 
 		if(exprnode->descriptor == ASTNODETYPE_FUNC_CALL)
 		{ 
-			str_appendfmt(ccode, "erwall_%s(", exprnode->token.text);
+			str_appendfmt(ccode, "erwall_%s(", exprnode->branches[0]->token.text);
 			int first = 1;
 			for(size_t i = 0; 
 				i < vec_getsize(exprnode->branches[1]->branches); 
@@ -130,8 +130,20 @@ static void generateblock(
 	struct Str* ccode, 
 	struct ASTNode* block, 
 	size_t funcpos,
-	const char* funcname)
+	const char* funcname,
+	size_t indentlvl)
 { 
+	for(size_t i = 0; i < indentlvl; i++)
+	{ 
+		str_append(ccode, "\t");
+	}
+	str_append(ccode, "{\n");
+
+	for(size_t i = 0; i < indentlvl; i++)
+	{ 
+		str_append(ccode, "\t");
+	}
+
 	for(size_t i = 0; i < vec_getsize(block->branches); i++)
 	{ 
 		if(block->branches[i]->istoken)
@@ -167,33 +179,46 @@ static void generateblock(
 					namenode->token.text
 				); 
 
-				int first = 1;
-				for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
+				size_t numargs = vec_getsize(argsnode->branches);
+				if(numargs)
 				{ 
-					if(!first)
+					int first = 1;
+					for(size_t j = 0; j < numargs; j++)
 					{ 
-						str_append(&funccode, ", ");
-					}
+						if(!first)
+						{ 
+							str_append(&funccode, ", ");
+						}
 
-					struct ASTNode* varnode = argsnode->branches[j];
-					if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
-					{ 
-						str_append(&funccode, "const ");
-					}
+						struct ASTNode* varnode = argsnode->branches[j];
+						if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
+						{ 
+							str_append(&funccode, "const ");
+						}
 
-					str_appendfmt(
-						&funccode, 
-						"erwall_%s %s", 
-						varnode->branches[1]->token.text,
-						varnode->branches[0]->token.text
-					);
-					
-					first = 0;
+						str_appendfmt(
+							&funccode, 
+							"erwall_%s erwall_%s", 
+							varnode->branches[1]->token.text,
+							varnode->branches[0]->token.text
+						);
+						
+						first = 0;
+					}
+				}
+				else
+				{ 
+					str_append(&funccode, "void");
 				}
 
-				str_append(&funccode, ")\n{\n");
-				generateblock(ccode, blocknode, funcpos, namenode->token.text);
-				str_append(&funccode, "\n}\n");
+				str_append(&funccode, ")\n");
+				generateblock(
+					ccode, 
+					blocknode, 
+					funcpos, 
+					namenode->token.text,
+					indentlvl + 1
+				);
 
 				str_insert(ccode, funcpos, funccode.data);
 				str_dtor(&funccode);
@@ -203,7 +228,7 @@ static void generateblock(
 				struct ASTNode* typenode = block->branches[i];
 				str_appendfmt(
 					ccode, 
-					"	typedef erwall_%s erwall_%s;\n", 
+					"\ttypedef erwall_%s erwall_%s;\n", 
 					typenode->branches[1]->token.text,
 					typenode->branches[0]->token.text
 				);
@@ -213,7 +238,7 @@ static void generateblock(
 				struct ASTNode* letnode = block->branches[i];
 				str_appendfmt(
 					ccode,
-					"	const erwall_%s erwall_%s",
+					"\tconst erwall_%s erwall_%s",
 					letnode->branches[1]->token.text,
 					letnode->branches[0]->token.text
 				);
@@ -231,7 +256,7 @@ static void generateblock(
 				struct ASTNode* letnode = block->branches[i];
 				str_appendfmt(
 					ccode,
-					"	erwall_%s erwall_%s",
+					"\terwall_%s erwall_%s",
 					letnode->branches[1]->token.text,
 					letnode->branches[0]->token.text
 				);
@@ -246,17 +271,57 @@ static void generateblock(
 			}
 			else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_IF)
 			{ 
+				struct ASTNode* ifnode = block->branches[i];
+				str_append(ccode, "\tif(");
+				generateexpr(ccode, ifnode->branches[0]);
+				str_append(ccode, ")\n");
+				generateblock(
+					ccode, 
+					ifnode->branches[1], 
+					funcpos, 
+					funcname,
+					indentlvl + 1
+				);
+
+				for(size_t j = 2; j < vec_getsize(ifnode->branches); j++)
+				{ 
+					if(ifnode->branches[j]->token.type == 
+						TOKENTYPE_KEYWORD_ELSEIF)
+					{ 
+						str_append(ccode, "\telse if(");
+						generateexpr(ccode, ifnode->branches[j]->branches[0]);
+						str_append(ccode, ")\n");
+						generateblock(
+							ccode, 
+							ifnode->branches[j]->branches[1], 
+							funcpos, 
+							funcname,
+							indentlvl + 1
+						);
+					}
+					else //else statement
+					{ 
+						str_append(ccode, "\telse\n");
+						generateblock(
+							ccode, 
+							ifnode->branches[j]->branches[0], 
+							funcpos, 
+							funcname,
+							indentlvl + 1
+						);
+					}
+				}
 			}
 			else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_RETURN)
 			{ 
-				str_append(ccode, "	return ");
+				str_append(ccode, "\treturn ");
 				generateexpr(ccode, block->branches[i]->branches[0]);
 				str_append(ccode, ";\n");
 			}
 			else if(block->branches[i]->token.type == TOKENTYPE_FOREIGN)
 			{ 
 				struct ASTNode* foreignnode = block->branches[i];
-				str_appendfmt(ccode, "	%s(", foreignnode->token.text);
+				str_appendfmt(ccode, "\t%s(", foreignnode->token.text);
 				int first = 1;
 				for(size_t j = 0; 
 					j < vec_getsize(foreignnode->branches[0]->branches); 
@@ -280,7 +345,7 @@ static void generateblock(
 				struct ASTNode* callnode = block->branches[i];
 				str_appendfmt(
 					ccode, 
-					"	erwall_%s(", 
+					"\terwall_%s(", 
 					callnode->branches[0]->token.text
 				);
 
@@ -301,6 +366,12 @@ static void generateblock(
 			}
 		}
 	}
+
+	for(size_t i = 0; i < indentlvl; i++)
+	{ 
+		str_append(ccode, "\t");
+	}
+	str_append(ccode, "}\n");
 }
 
 struct Str generate(struct ASTNode* ast)
@@ -311,25 +382,25 @@ struct Str generate(struct ASTNode* ast)
 		"#include <stdio.h>\n"
 		"#include <math.h>\n\n"
 
-		"enum {erwall_false, erwall_true};\n\n"
+		"typedef int8_t\t\terwall_Int8;\n"
+		"typedef int16_t\t\terwall_Int16;\n"
+		"typedef int32_t\t\terwall_Int32;\n"
+		"typedef int64_t\t\terwall_Int64;\n"
+		"typedef uint8_t\t\terwall_UInt8;\n"
+		"typedef uint16_t\terwall_UInt16;\n"
+		"typedef uint32_t\terwall_UInt32;\n"
+		"typedef uint64_t\terwall_UInt64;\n"
+		"typedef float\t\terwall_Float32;\n" //XXX: Not portable
+		"typedef double\t\terwall_Float64;\n" //XXX: Not portable
+		"typedef _Bool\t\terwall_Bool;\n\n"
 
-		"typedef int8_t		erwall_Int8;\n"
-		"typedef int16_t 	erwall_Int16;\n"
-		"typedef int32_t 	erwall_Int32;\n"
-		"typedef int64_t 	erwall_Int64;\n"
-		"typedef uint8_t 	erwall_UInt8;\n"
-		"typedef uint16_t 	erwall_UInt16;\n"
-		"typedef uint32_t 	erwall_UInt32;\n"
-		"typedef uint64_t	erwall_UInt64;\n"
-		"typedef float		erwall_Float32;\n" //XXX: Not portable
-		"typedef double		erwall_Float64;\n" //XXX: Not portable
-		"typedef _Bool		erwall_Bool;\n\n"
+		"enum {erwall_false, erwall_true};\n"
 	};
 
 	const char footer[] = { 
 		"\nint main(int argc, char* argv[])\n"
 		"{\n"
-		"	return erwall_main();\n"
+		"\treturn erwall_main();\n"
 		"}\n"
 	};
 
@@ -362,33 +433,41 @@ struct Str generate(struct ASTNode* ast)
 			}
 
 			str_appendfmt(&ccode, "erwall_%s(", namenode->token.text); 
-			int first = 1;
-			for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
+
+			size_t numargs = vec_getsize(argsnode->branches);
+			if(numargs)
 			{ 
-				if(!first)
+				int first = 1;
+				for(size_t j = 0; j < numargs; j++)
 				{ 
-					str_append(&ccode, ", ");
+					if(!first)
+					{ 
+						str_append(&ccode, ", ");
+					}
+
+					struct ASTNode* varnode = argsnode->branches[j];
+					if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
+					{ 
+						str_append(&ccode, "const ");
+					}
+
+					str_appendfmt(
+						&ccode, 
+						"erwall_%s erwall_%s", 
+						varnode->branches[1]->token.text,
+						varnode->branches[0]->token.text
+					);
+
+					first = 0;
 				}
-
-				struct ASTNode* varnode = argsnode->branches[j];
-				if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
-				{ 
-					str_append(&ccode, "const ");
-				}
-
-				str_appendfmt(
-					&ccode, 
-					"erwall_%s %s", 
-					varnode->branches[1]->token.text,
-					varnode->branches[0]->token.text
-				);
-
-				first = 0;
+			}
+			else
+			{ 
+				str_append(&ccode, "void");
 			}
 
-			str_append(&ccode, ")\n{\n");
-			generateblock(&ccode, blocknode, funcpos, namenode->token.text);
-			str_append(&ccode, "\n}\n");
+			str_append(&ccode, ")\n");
+			generateblock(&ccode, blocknode, funcpos, namenode->token.text, 0);
 		}
 		else if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
 		{ 

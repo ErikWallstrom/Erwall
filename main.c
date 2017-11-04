@@ -51,13 +51,13 @@ void compile(struct Str* ccode, const char* filename)
 		filename
 	);
 
-	log_info("%s", command.data);
 	int ret = system(command.data);
 	if(ret) //NOTE: This does not seem to work
 	{ 
 		log_error("C Compilation failed");
 	}
 
+	remove(cfilename.data);
 	str_dtor(&command);
 	str_dtor(&cfilename);
 }
@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
 					.fg = ANSICODE_FG_BLUE, 
 					.bold = 1, 
 				};
-				ansicode_printf(&color, "%s\n}n", tokens[i].text);
+				ansicode_printf(&color, "%s\n", tokens[i].text);
 			}
 		}
 
@@ -134,10 +134,11 @@ int main(int argc, char* argv[])
 
 		if(argparser.results[3].used)
 		{ 
-			ansicode_printf(&titlecolor, "C Output:\n\n");
+			ansicode_printf(&titlecolor, "\nGenerated code:\n\n");
 			printf("%s\n", ccode.data);
 		}
 
+		ansicode_printf(&titlecolor, "\nCompilation Output:\n\n");
 		compile(&ccode, argparser.results[0].arg);
 
 		//Cleanup

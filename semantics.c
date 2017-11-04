@@ -114,21 +114,27 @@ static struct ASTNode* getexprtype(
 				exprnode->token.type == TOKENTYPE_OPERATOR_GREATEROREQUAL)
 			{
 				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Bool"};
-				ret = scope_gettype(scope, ast_newfromtoken(token)); //Mem leak
+				struct ASTNode* temp = ast_newfromtoken(token);
+				ret = scope_gettype(scope, temp);
 				checknumerical(exprnode, type1, scope);
+				ast_dtor(temp);
 			}
 			else if(exprnode->token.type == TOKENTYPE_OPERATOR_EQUAL ||
 				exprnode->token.type == TOKENTYPE_OPERATOR_NOTEQUAL)
 			{
 				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Bool"};
-				ret = scope_gettype(scope, ast_newfromtoken(token)); //Mem leak
+				struct ASTNode* temp = ast_newfromtoken(token);
+				ret = scope_gettype(scope, temp);
+				ast_dtor(temp);
 			}
 			else if(exprnode->token.type == TOKENTYPE_OPERATOR_OR ||
 				exprnode->token.type == TOKENTYPE_OPERATOR_AND)
 			{
 				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Bool"};
-				ret = scope_gettype(scope, ast_newfromtoken(token)); //Mem leak
+				struct ASTNode* temp = ast_newfromtoken(token);
+				ret = scope_gettype(scope, temp);
 				checkboolean(exprnode, type1, scope);
+				ast_dtor(temp);
 			}
 			else
 			{
@@ -153,12 +159,16 @@ static struct ASTNode* getexprtype(
 			if(exprnode->token.type == TOKENTYPE_LITERAL_BOOL)
 			{ 
 				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Bool"};
-				ret = scope_gettype(scope, ast_newfromtoken(token)); //Mem leak
+				struct ASTNode* temp = ast_newfromtoken(token);
+				ret = scope_gettype(scope, temp);
+				ast_dtor(temp);
 			}
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_INT)
 			{ 
 				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Int32"};
-				ret = scope_gettype(scope, ast_newfromtoken(token));
+				struct ASTNode* temp = ast_newfromtoken(token);
+				ret = scope_gettype(scope, temp);
+				ast_dtor(temp);
 			}
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_FLOAT)
 			{ 
@@ -166,12 +176,16 @@ static struct ASTNode* getexprtype(
 					.type = TOKENTYPE_TYPE, 
 					.text = "Float32"
 				};
-				ret = scope_gettype(scope, ast_newfromtoken(token));
+				struct ASTNode* temp = ast_newfromtoken(token);
+				ret = scope_gettype(scope, temp);
+				ast_dtor(temp);
 			}
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_CHAR)
 			{ 
 				struct Token token = {.type = TOKENTYPE_TYPE, .text = "Char"};
-				ret = scope_gettype(scope, ast_newfromtoken(token));
+				struct ASTNode* temp = ast_newfromtoken(token);
+				ret = scope_gettype(scope, temp);
+				ast_dtor(temp);
 			}
 			else if(exprnode->token.type == TOKENTYPE_IDENT)
 			{ 
@@ -180,7 +194,10 @@ static struct ASTNode* getexprtype(
 			}
 			else
 			{ 
-				log_info("This shouldn't happen 1'");
+				log_info(
+					"This shouldn't happen 1' %s", 
+					exprnode->token.type->name
+				);
 			}
 		}
 	}
@@ -219,7 +236,7 @@ static struct ASTNode* getexprtype(
 		}
 		else
 		{ 
-			log_info("This shouldn't happen 2'");
+			log_info("This shouldn't happen 2' %s", exprnode->descriptor->name);
 		}
 	}
 
@@ -365,6 +382,15 @@ static void checkblock(
 
 				checkexprtype(rettype, retnode->branches[0], scope);
 			}
+			else if(blocknode->branches[i]->token.type == TOKENTYPE_FOREIGN)
+			{ 
+				struct ASTNode* foreignnode = blocknode->branches[i];
+				struct ASTNode* argsnode = foreignnode->branches[0];
+				for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
+				{ 
+					getexprtype(argsnode->branches[j], scope);
+				}
+			}
 		}
 		else
 		{ 
@@ -402,6 +428,7 @@ void checksemantics(struct ASTNode* ast)
 	struct ASTNode* node;
 
 	for(size_t i = 0; i < sizeof types / sizeof *types; i++)
+		//NOTE: Memory leak here
 	{  
 		node = ast_newfromtoken(typetoken);
 		token.text = types[i];
@@ -434,6 +461,7 @@ void checksemantics(struct ASTNode* ast)
 
 			struct ASTNode* blocknode = funcnode->branches[3];
 			checkblock(funcnode, blocknode, &scope, &globalscope);
+			scope_dtor(&scope);
 		}
 		else if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
 		{
@@ -446,4 +474,6 @@ void checksemantics(struct ASTNode* ast)
 	{ 
 		log_error("Semantic error: Expected a main function");
 	}
+
+	scope_dtor(&globalscope);
 }
