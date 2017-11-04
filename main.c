@@ -18,8 +18,8 @@
 */
 
 #include "argparser.h"
-#include "ansicodes.h"
 #include "generator.h"
+#include "ansicode.h"
 #include "file.h"
 #include "log.h"
 

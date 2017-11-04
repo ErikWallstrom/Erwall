@@ -1,24 +1,16 @@
 type Int: Int32;
 
-func add: (let x: Int32, let y: Int32) -> Int32
+func loop: (let times: UInt32)
 { 
-	return x + y;
+	@printf("Loop iteration: %u\n", times);
+	if(times > UInt32(0))
+	{ 
+		loop(times - UInt32(1));
+	}
 }
 
 func main: () -> Int32
 { 
-	if(10 < add(1, 2))
-	{ 
-		@puts("Wtf???");
-	}
-	elseif(11 == add(1, 2))
-	{ 
-		@puts("Wtf???");
-	}
-	else
-	{ 
-		@puts("Indeed");
-	}
-
+	loop(UInt32(13) - UInt32(2));
 	return 0;
 }

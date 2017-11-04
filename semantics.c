@@ -353,21 +353,41 @@ static void checkblock(
 			{ 
 				struct ASTNode* ifnode = blocknode->branches[i];
 				struct ASTNode* ifexpr = ifnode->branches[0];
+				struct ASTNode* ifblock = ifnode->branches[1];
 				struct ASTNode* iftype = getexprtype(ifexpr, scope);
 				checkboolean(ifexpr, iftype, scope);
+				checkblock(parentfuncnode, ifblock, scope, globalscope);
 
 				for(size_t j = 2; j < vec_getsize(ifnode->branches); j++)
 				{ 
 					if(ifnode->branches[j]->token.type == 
 						TOKENTYPE_KEYWORD_ELSEIF)
 					{ 
-						struct ASTNode* elseifexpr = ifnode->branches[j]->
-							branches[0];
+						struct ASTNode* elseifnode = ifnode->branches[j];
+						struct ASTNode* elseifexpr = elseifnode->branches[0];
 						struct ASTNode* elseiftype = getexprtype(
 							elseifexpr, 
 							scope
 						);
 						checkboolean(elseifexpr, elseiftype, scope);
+						struct ASTNode* elseifblock = elseifnode->branches[1];
+						checkblock(
+							parentfuncnode, 
+							elseifblock, 
+							scope, 
+							globalscope
+						);
+					}
+					else //else statement
+					{ 
+						struct ASTNode* elsenode = ifnode->branches[j];
+						struct ASTNode* elseblock = elsenode->branches[0];
+						checkblock(
+							parentfuncnode, 
+							elseblock, 
+							scope, 
+							globalscope
+						);
 					}
 				}
 			}

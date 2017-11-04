@@ -17,7 +17,7 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "ansicodes.h"
+#include "ansicode.h"
 #include "log.h"
 #include <stdio.h>
 
