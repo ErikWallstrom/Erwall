@@ -232,11 +232,65 @@ static void generateblock(
 					str_append(&funccode, "void");
 				}
 
+				str_append(&funccode, ");\n");
+				size_t newfuncpos = funccode.len;
+
+				if(vec_getsize(retnode->branches))
+				{ 
+					str_appendfmt(
+						&funccode, 
+						"\nerwall_%s ", 
+						retnode->branches[0]->token.text
+					);
+				}
+				else
+				{ 
+					str_append(&funccode, "\nvoid ");
+				}
+
+				str_appendfmt(
+					&funccode, 
+					"erwall_%s_%s(", 
+					funcname,
+					namenode->token.text
+				); 
+
+				if(numargs)
+				{ 
+					int first = 1;
+					for(size_t j = 0; j < numargs; j++)
+					{ 
+						if(!first)
+						{ 
+							str_append(&funccode, ", ");
+						}
+
+						struct ASTNode* varnode = argsnode->branches[j];
+						if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
+						{ 
+							str_append(&funccode, "const ");
+						}
+
+						str_appendfmt(
+							&funccode, 
+							"erwall_%s erwall_%s", 
+							varnode->branches[1]->token.text,
+							varnode->branches[0]->token.text
+						);
+						
+						first = 0;
+					}
+				}
+				else
+				{ 
+					str_append(&funccode, "void");
+				}
+
 				str_append(&funccode, ")\n");
 				generateblock(
 					&funccode, 
 					blocknode, 
-					funcpos, 
+					newfuncpos, 
 					namenode->token.text,
 					0
 				);
@@ -394,6 +448,7 @@ struct Str generate(struct ASTNode* ast)
 { 
 	const char header[] = { 
 		"//Generated with Erwall\n\n"
+
 		"#include <inttypes.h>\n"
 		"#include <stdio.h>\n"
 		"#include <math.h>\n\n"
@@ -417,7 +472,7 @@ struct Str generate(struct ASTNode* ast)
 		"\nint main(int argc, char* argv[])\n"
 		"{\n"
 		"\treturn erwall_main();\n"
-		"}\n"
+		"}\n\n"
 	};
 
 	struct Str ccode;
@@ -427,8 +482,6 @@ struct Str generate(struct ASTNode* ast)
 	{ 
 		if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
 		{ 
-			size_t funcpos = ccode.len;
-
 			struct ASTNode* funcnode = ast->branches[i];
 			struct ASTNode* blocknode = funcnode->branches[3];
 			struct ASTNode* retnode = funcnode->branches[2];
@@ -449,8 +502,55 @@ struct Str generate(struct ASTNode* ast)
 			}
 
 			str_appendfmt(&ccode, "erwall_%s(", namenode->token.text); 
-
 			size_t numargs = vec_getsize(argsnode->branches);
+			if(numargs)
+			{ 
+				int first = 1;
+				for(size_t j = 0; j < numargs; j++)
+				{ 
+					if(!first)
+					{ 
+						str_append(&ccode, ", ");
+					}
+
+					struct ASTNode* varnode = argsnode->branches[j];
+					if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
+					{ 
+						str_append(&ccode, "const ");
+					}
+
+					str_appendfmt(
+						&ccode, 
+						"erwall_%s erwall_%s", 
+						varnode->branches[1]->token.text,
+						varnode->branches[0]->token.text
+					);
+
+					first = 0;
+				}
+			}
+			else
+			{ 
+				str_append(&ccode, "void");
+			}
+
+			str_append(&ccode, ");\n");
+			size_t funcpos = ccode.len;
+
+			if(vec_getsize(retnode->branches))
+			{ 
+				str_appendfmt(
+					&ccode, 
+					"\nerwall_%s ", 
+					retnode->branches[0]->token.text
+				);
+			}
+			else
+			{ 
+				str_append(&ccode, "\nvoid ");
+			}
+
+			str_appendfmt(&ccode, "erwall_%s(", namenode->token.text); 
 			if(numargs)
 			{ 
 				int first = 1;

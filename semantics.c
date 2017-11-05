@@ -313,8 +313,10 @@ static void checkblock(
 			{
 				struct ASTNode* funcnode = blocknode->branches[i];
 				scope_addfunction(scope, funcnode);
+
 				struct Scope newscope;
 				scope_ctor(&newscope, globalscope);
+				scope_addfunction(&newscope, funcnode);
 
 				struct ASTNode* argsnode = funcnode->branches[1];
 				for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
