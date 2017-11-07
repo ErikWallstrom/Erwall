@@ -22,13 +22,25 @@
 
 #include "vec.h"
 
-struct Scope
+struct VariableScope
 {
 	Vec(struct ASTNode*) variables;
+	struct VariableScope* parent;
+};
+
+struct Scope
+{
+	struct VariableScope variablescope;
 	Vec(struct ASTNode*) functions;
 	Vec(struct ASTNode*) types;
 	struct Scope* parent;
 };
+
+struct VariableScope* variablescope_ctor(
+	struct VariableScope* self, 
+	struct VariableScope* parent
+);
+void variablescope_dtor(struct VariableScope* self);
 
 struct Scope* scope_ctor(struct Scope* self, struct Scope* parent);
 struct ASTNode* scope_getvariable(struct Scope* self, struct ASTNode* name);

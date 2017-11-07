@@ -44,8 +44,7 @@ static void generatefunccall(
 	{
 		str_appendfmt(
 			ccode, 
-			"erwall__%s__%s(", 
-			curfuncname,
+			"erwall__%s(", 
 			callnode->branches[0]->token.text
 		);
 	}

@@ -21,22 +21,50 @@
 #include "ast.h"
 #include "log.h"
 
+struct VariableScope* variablescope_ctor(
+	struct VariableScope* self,
+	struct VariableScope* parent)
+{
+	log_assert(self, "is NULL");
+	self->variables = vec_ctor(struct ASTNode*, 0);
+	self->parent = parent;
+	return self;
+}
+
+void variablescope_dtor(struct VariableScope* self)
+{
+	log_assert(self, "is NULL");
+	vec_dtor(self->variables);
+}
+
 static struct ASTNode* scope_findvariable(struct Scope* self, const char* name)
 {
 	log_assert(self, "is NULL");
 	log_assert(name, "is NULL");
 
-	do {
-		for(size_t i = 0; i < vec_getsize(self->variables); i++)
-		{
-			if(!strcmp(self->variables[i]->branches[0]->token.text, name))
+	struct VariableScope* scope = &self->variablescope;
+	if(scope->variables)
+	{
+		do {
+			for(size_t i = 0; 
+				i < vec_getsize(scope->variables); 
+				i++)
 			{
-				return self->variables[i];
+				if(!strcmp(
+					scope->variables[i]->branches[0]->token.text, 
+					name))
+				{
+					return scope->variables[i];
+				}
 			}
-		}
 
-		self = self->parent;
-	} while(self);
+			scope = scope->parent;
+			if(!scope || !scope->variables)
+			{
+				break;
+			}
+		} while(self);
+	}
 
 	return NULL;
 }
@@ -86,8 +114,8 @@ struct Scope* scope_ctor(struct Scope* self, struct Scope* parent)
 	log_assert(self, "is NULL");
 
 	self->functions = vec_ctor(struct ASTNode*, 0);
-	self->variables = vec_ctor(struct ASTNode* , 0);
 	self->types = vec_ctor(struct ASTNode* , 0);
+	self->variablescope.variables = NULL;
 	self->parent = parent;
 
 	return self;
@@ -154,6 +182,7 @@ void scope_addvariable(struct Scope* self, struct ASTNode* var)
 {
 	log_assert(self, "is NULL");
 	log_assert(var, "is NULL");
+	log_assert(self->variablescope.variables, "no scope");
 	
 	struct ASTNode* vartest = scope_findvariable(
 		self,
@@ -194,7 +223,7 @@ void scope_addvariable(struct Scope* self, struct ASTNode* var)
 		);
 	}
 
-	vec_pushback(self->variables, var);
+	vec_pushback(self->variablescope.variables, var);
 }
 
 void scope_addfunction(struct Scope* self, struct ASTNode* func)
@@ -290,7 +319,6 @@ void scope_dtor(struct Scope* self)
 	log_assert(self, "is NULL");
 
 	vec_dtor(self->functions);
-	vec_dtor(self->variables);
 	vec_dtor(self->types);
 }
 

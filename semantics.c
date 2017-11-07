@@ -191,12 +191,12 @@ static struct ASTNode* getexprtype(
 			else if(exprnode->token.type == TOKENTYPE_IDENT)
 			{ 
 				struct ASTNode* varnode = scope_getvariable(scope, exprnode);
+				log_info("%p, %s", varnode, varnode->branches[0]->token.text);
 				ret = scope_gettype(scope, varnode->branches[1]);
-				if(!varnode->udata)
-				{
+				log_info("%p, %s", ret, ret->branches[0]->token.text);
+
 				struct VariableSemantics* semantics = varnode->udata;
 				semantics->used = 1;
-				}
 			}
 			else
 			{ 
@@ -322,8 +322,61 @@ static void checkfunccall(struct ASTNode* callnode, struct Scope* scope)
 static void checkblock(
 	struct ASTNode* parentfuncnode, 
 	struct ASTNode* blocknode, 
-	struct Scope* scope,
-	struct Scope* globalscope)
+	struct Scope* scope
+);
+
+static void checkfunction(
+	struct ASTNode* funcnode, 
+	struct Scope* scope, 
+	int global)
+{
+	scope_addfunction(scope, funcnode);
+	struct FunctionSemantics* semantics = malloc(
+		sizeof(struct FunctionSemantics)
+	);
+
+	if(!semantics)
+	{
+		log_error("malloc failed in <%s>", __func__);
+	}
+
+	semantics->isglobal = global;
+	semantics->used = 0;
+	funcnode->udata = semantics;
+
+	struct Scope newscope;
+	scope_ctor(&newscope, scope);
+	variablescope_ctor(&newscope.variablescope, NULL);
+
+	struct ASTNode* argsnode = funcnode->branches[1];
+	for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
+	{ 
+		struct VariableSemantics* varsemantics = malloc(
+			sizeof(struct VariableSemantics)
+		);
+
+		if(!varsemantics)
+		{
+			log_error("malloc failed in <%s>", __func__);
+		}
+
+		varsemantics->used = 0;
+		varsemantics->hasvalue = 1;
+
+		argsnode->branches[j]->udata = varsemantics;
+		scope_addvariable(&newscope, argsnode->branches[j]);
+	}
+
+	struct ASTNode* newblocknode = funcnode->branches[3];
+	checkblock(funcnode, newblocknode, &newscope);
+	variablescope_dtor(&newscope.variablescope);
+	scope_dtor(&newscope);
+}
+
+static void checkblock(
+	struct ASTNode* parentfuncnode, 
+	struct ASTNode* blocknode, 
+	struct Scope* scope)
 { 
 	for(size_t i = 0; i < vec_getsize(blocknode->branches); i++)
 	{ 
@@ -332,46 +385,7 @@ static void checkblock(
 			if(blocknode->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
 			{
 				struct ASTNode* funcnode = blocknode->branches[i];
-				scope_addfunction(scope, funcnode);
-
-				struct FunctionSemantics* semantics = malloc(
-					sizeof(struct FunctionSemantics)
-				);
-
-				if(!semantics)
-				{
-					log_error("malloc failed in <%s>", __func__);
-				}
-
-				semantics->isglobal = 0;
-				semantics->used = 0;
-				funcnode->udata = semantics;
-
-				struct Scope newscope;
-				scope_ctor(&newscope, globalscope);
-				scope_addfunction(&newscope, funcnode);
-
-				struct ASTNode* argsnode = funcnode->branches[1];
-				for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
-				{ 
-					struct VariableSemantics* varsemantics = malloc(
-						sizeof(struct VariableSemantics)
-					);
-
-					if(!varsemantics)
-					{
-						log_error("malloc failed in <%s>", __func__);
-					}
-
-					varsemantics->used = 0;
-					varsemantics->hasvalue = 1;
-
-					argsnode->branches[j]->udata = varsemantics;
-					scope_addvariable(&newscope, argsnode->branches[j]);
-				}
-
-				struct ASTNode* newblocknode = funcnode->branches[3];
-				checkblock(funcnode, newblocknode, &newscope, globalscope);
+				checkfunction(funcnode, scope, 0);
 			}
 			else if(blocknode->branches[i]->token.type == 
 				TOKENTYPE_KEYWORD_TYPE)
@@ -414,12 +428,13 @@ static void checkblock(
 			}
 			else if(blocknode->branches[i]->token.type == TOKENTYPE_KEYWORD_IF)
 			{ 
+				//TODO: Fix scopes
 				struct ASTNode* ifnode = blocknode->branches[i];
 				struct ASTNode* ifexpr = ifnode->branches[0];
 				struct ASTNode* ifblock = ifnode->branches[1];
 				struct ASTNode* iftype = getexprtype(ifexpr, scope);
 				checkboolean(ifexpr, iftype, scope);
-				checkblock(parentfuncnode, ifblock, scope, globalscope);
+				checkblock(parentfuncnode, ifblock, scope);
 
 				for(size_t j = 2; j < vec_getsize(ifnode->branches); j++)
 				{ 
@@ -434,23 +449,13 @@ static void checkblock(
 						);
 						checkboolean(elseifexpr, elseiftype, scope);
 						struct ASTNode* elseifblock = elseifnode->branches[1];
-						checkblock(
-							parentfuncnode, 
-							elseifblock, 
-							scope, 
-							globalscope
-						);
+						checkblock(parentfuncnode, elseifblock, scope);
 					}
 					else //else statement
 					{ 
 						struct ASTNode* elsenode = ifnode->branches[j];
 						struct ASTNode* elseblock = elsenode->branches[0];
-						checkblock(
-							parentfuncnode, 
-							elseblock, 
-							scope, 
-							globalscope
-						);
+						checkblock(parentfuncnode, elseblock, scope);
 					}
 				}
 			}
@@ -543,52 +548,13 @@ void checksemantics(struct ASTNode* ast)
 		if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
 		{
 			struct ASTNode* funcnode = ast->branches[i];
-			scope_addfunction(&globalscope, funcnode);
-
 			if(!strcmp(funcnode->branches[0]->token.text, "main"))
 			{ 
 				log_assert(!hasmain, "this should not happen");
 				hasmain = 1;
 			}
 
-			struct FunctionSemantics* semantics = malloc(
-				sizeof(struct FunctionSemantics)
-			);
-
-			if(!semantics)
-			{
-				log_error("malloc failed in <%s>", __func__);
-			}
-
-			semantics->isglobal = 1;
-			semantics->used = 0;
-			funcnode->udata = semantics;
-
-			struct Scope scope;
-			scope_ctor(&scope, &globalscope);
-
-			struct ASTNode* argsnode = funcnode->branches[1];
-			for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
-			{ 
-				struct VariableSemantics* varsemantics = malloc(
-					sizeof(struct VariableSemantics)
-				);
-
-				if(!varsemantics)
-				{
-					log_error("malloc failed in <%s>", __func__);
-				}
-
-				varsemantics->used = 0;
-				varsemantics->hasvalue = 1;
-
-				argsnode->branches[j]->udata = varsemantics;
-				scope_addvariable(&scope, argsnode->branches[j]);
-			}
-
-			struct ASTNode* blocknode = funcnode->branches[3];
-			checkblock(funcnode, blocknode, &scope, &globalscope);
-			scope_dtor(&scope);
+			checkfunction(funcnode, &globalscope, 1);
 		}
 		else if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
 		{
@@ -604,3 +570,4 @@ void checksemantics(struct ASTNode* ast)
 
 	scope_dtor(&globalscope);
 }
+
