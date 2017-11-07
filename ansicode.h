@@ -17,8 +17,8 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef ANSICODES_H
-#define ANSICODES_H
+#ifndef ANSICODE_H
+#define ANSICODE_H
 
 #include <stdarg.h>
 

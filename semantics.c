@@ -2,6 +2,7 @@
 #include "scope.h"
 #include "log.h"
 #include <string.h>
+#include <stdlib.h>
 
 static void checkboolean(
 	struct ASTNode* exprnode, 
@@ -191,11 +192,16 @@ static struct ASTNode* getexprtype(
 			{ 
 				struct ASTNode* varnode = scope_getvariable(scope, exprnode);
 				ret = scope_gettype(scope, varnode->branches[1]);
+				if(!varnode->udata)
+				{
+				struct VariableSemantics* semantics = varnode->udata;
+				semantics->used = 1;
+				}
 			}
 			else
 			{ 
 				log_info(
-					"This shouldn't happen 1' %s", 
+					"This shouldn't happen 1 %s", 
 					exprnode->token.type->name
 				);
 			}
@@ -205,11 +211,25 @@ static struct ASTNode* getexprtype(
 	{ 
 		if(exprnode->descriptor == ASTNODETYPE_FUNC_CALL)
 		{ 
+			struct FunctionCallSemantics* semantics = malloc(
+				sizeof(struct FunctionCallSemantics)
+			);
+
+			if(!semantics)
+			{
+				log_error("malloc failed in <%s>", __func__);
+			}
+
 			checkfunccall(exprnode, scope);
 			struct ASTNode* funcnode = scope_getfunction(
 				scope, 
 				exprnode->branches[0]
 			);
+
+			struct FunctionSemantics* funcsemantics = funcnode->udata;
+			semantics->isglobal = funcsemantics->isglobal;
+			funcsemantics->used = 1;
+			exprnode->udata = semantics;
 
 			if(vec_getsize(funcnode->branches[2]->branches))
 			{ 
@@ -236,7 +256,7 @@ static struct ASTNode* getexprtype(
 		}
 		else
 		{ 
-			log_info("This shouldn't happen 2' %s", exprnode->descriptor->name);
+			log_info("This shouldn't happen 2 %s", exprnode->descriptor->name);
 		}
 	}
 
@@ -314,6 +334,19 @@ static void checkblock(
 				struct ASTNode* funcnode = blocknode->branches[i];
 				scope_addfunction(scope, funcnode);
 
+				struct FunctionSemantics* semantics = malloc(
+					sizeof(struct FunctionSemantics)
+				);
+
+				if(!semantics)
+				{
+					log_error("malloc failed in <%s>", __func__);
+				}
+
+				semantics->isglobal = 0;
+				semantics->used = 0;
+				funcnode->udata = semantics;
+
 				struct Scope newscope;
 				scope_ctor(&newscope, globalscope);
 				scope_addfunction(&newscope, funcnode);
@@ -321,6 +354,19 @@ static void checkblock(
 				struct ASTNode* argsnode = funcnode->branches[1];
 				for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
 				{ 
+					struct VariableSemantics* varsemantics = malloc(
+						sizeof(struct VariableSemantics)
+					);
+
+					if(!varsemantics)
+					{
+						log_error("malloc failed in <%s>", __func__);
+					}
+
+					varsemantics->used = 0;
+					varsemantics->hasvalue = 1;
+
+					argsnode->branches[j]->udata = varsemantics;
 					scope_addvariable(&newscope, argsnode->branches[j]);
 				}
 
@@ -338,6 +384,19 @@ static void checkblock(
 			{ 
 				struct ASTNode* varnode = blocknode->branches[i];
 				struct ASTNode* valuenode = varnode->branches[2];
+
+				struct VariableSemantics* semantics = malloc(
+					sizeof(struct VariableSemantics)
+				);
+
+				if(!semantics)
+				{
+					log_error("malloc failed in <%s>", __func__);
+				}
+
+				semantics->used = 0;
+				semantics->hasvalue = 0;
+
 				if(vec_getsize(valuenode->branches))
 				{ 
 					struct ASTNode* varnodetype = varnode->branches[1];
@@ -346,9 +405,11 @@ static void checkblock(
 						varnodetype
 					);
 
+					semantics->hasvalue = 1;
 					checkexprtype(vartype, valuenode->branches[0], scope);
 				}
 
+				varnode->udata = semantics;
 				scope_addvariable(scope, varnode);
 			}
 			else if(blocknode->branches[i]->token.type == TOKENTYPE_KEYWORD_IF)
@@ -419,6 +480,24 @@ static void checkblock(
 			if(blocknode->branches[i]->descriptor == ASTNODETYPE_FUNC_CALL)
 			{ 
 				struct ASTNode* callnode = blocknode->branches[i];
+				struct FunctionCallSemantics* semantics = malloc(
+					sizeof(struct FunctionCallSemantics)
+				);
+
+				if(!semantics)
+				{
+					log_error("malloc failed in <%s>", __func__);
+				}
+
+				struct ASTNode* funcnode = scope_getfunction(
+					scope, 
+					callnode->branches[0]
+				);
+
+				struct FunctionSemantics* funcsemantics = funcnode->udata;
+				semantics->isglobal = funcsemantics->isglobal;
+				funcsemantics->used = 1;
+				callnode->udata = semantics;
 				checkfunccall(callnode, scope);
 			}
 		}
@@ -472,12 +551,38 @@ void checksemantics(struct ASTNode* ast)
 				hasmain = 1;
 			}
 
+			struct FunctionSemantics* semantics = malloc(
+				sizeof(struct FunctionSemantics)
+			);
+
+			if(!semantics)
+			{
+				log_error("malloc failed in <%s>", __func__);
+			}
+
+			semantics->isglobal = 1;
+			semantics->used = 0;
+			funcnode->udata = semantics;
+
 			struct Scope scope;
 			scope_ctor(&scope, &globalscope);
 
 			struct ASTNode* argsnode = funcnode->branches[1];
 			for(size_t j = 0; j < vec_getsize(argsnode->branches); j++)
 			{ 
+				struct VariableSemantics* varsemantics = malloc(
+					sizeof(struct VariableSemantics)
+				);
+
+				if(!varsemantics)
+				{
+					log_error("malloc failed in <%s>", __func__);
+				}
+
+				varsemantics->used = 0;
+				varsemantics->hasvalue = 1;
+
+				argsnode->branches[j]->udata = varsemantics;
 				scope_addvariable(&scope, argsnode->branches[j]);
 			}
 

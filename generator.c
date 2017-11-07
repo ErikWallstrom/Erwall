@@ -20,7 +20,55 @@
 #include "generator.h"
 #include "log.h"
 
-static void generateexpr(struct Str* ccode, struct ASTNode* exprnode)
+static void generateexpr(
+	struct Str* ccode, 
+	struct ASTNode* exprnode,
+	const char* funcname 
+);
+static void generatefunccall(
+	struct Str* ccode, 
+	struct ASTNode* callnode, 
+	const char* curfuncname
+)
+{
+	struct FunctionCallSemantics* semantics = callnode->udata;
+	if(semantics->isglobal)
+	{
+		str_appendfmt(
+			ccode, 
+			"erwall_%s(", 
+			callnode->branches[0]->token.text
+		);
+	}
+	else
+	{
+		str_appendfmt(
+			ccode, 
+			"erwall__%s__%s(", 
+			curfuncname,
+			callnode->branches[0]->token.text
+		);
+	}
+
+	int first = 1;
+	for(size_t i = 0; i < vec_getsize(callnode->branches[1]->branches); i++)
+	{ 
+		if(!first)
+		{ 
+			str_append(ccode, ", ");
+		}
+
+		generateexpr(ccode, callnode->branches[1]->branches[i], curfuncname);
+		first = 0;
+	}
+	str_append(ccode, ")");
+}
+
+static void generateexpr(
+	struct Str* ccode, 
+	struct ASTNode* exprnode, 
+	const char* funcname
+)
 { 
 	if(exprnode->istoken)
 	{ 
@@ -29,17 +77,17 @@ static void generateexpr(struct Str* ccode, struct ASTNode* exprnode)
 			if(exprnode->token.type == TOKENTYPE_OPERATOR_POW)
 			{ 
 				str_append(ccode, "pow(");
-				generateexpr(ccode, exprnode->branches[0]);
+				generateexpr(ccode, exprnode->branches[0], funcname);
 				str_append(ccode, ", ");
-				generateexpr(ccode, exprnode->branches[1]);
+				generateexpr(ccode, exprnode->branches[1], funcname);
 				str_append(ccode, ")");
 			}
 			else
 			{ 
 				str_append(ccode, "(");
-				generateexpr(ccode, exprnode->branches[0]);
+				generateexpr(ccode, exprnode->branches[0], funcname);
 				str_appendfmt(ccode, " %s ", exprnode->token.text);
-				generateexpr(ccode, exprnode->branches[1]);
+				generateexpr(ccode, exprnode->branches[1], funcname);
 				str_append(ccode, ")");
 			}
 		}
@@ -48,13 +96,21 @@ static void generateexpr(struct Str* ccode, struct ASTNode* exprnode)
 			if(exprnode->branches[0]->token.type == TOKENTYPE_OPERATOR_NOT)
 			{ 
 				str_append(ccode, "!(");
-				generateexpr(ccode, exprnode->branches[0]->branches[0]);
+				generateexpr(
+					ccode, 
+					exprnode->branches[0]->branches[0], 
+					funcname
+				);
 				str_append(ccode, ")");
 			}
 			else if(exprnode->branches[0]->token.type == TOKENTYPE_OPERATOR_SUB)
 			{ 
 				str_append(ccode, "-(");
-				generateexpr(ccode, exprnode->branches[0]->branches[0]);
+				generateexpr(
+					ccode, 
+					exprnode->branches[0]->branches[0], 
+					funcname
+				);
 				str_append(ccode, ")");
 			}
 		}
@@ -97,21 +153,7 @@ static void generateexpr(struct Str* ccode, struct ASTNode* exprnode)
 	{ 
 		if(exprnode->descriptor == ASTNODETYPE_FUNC_CALL)
 		{ 
-			str_appendfmt(ccode, "erwall_%s(", exprnode->branches[0]->token.text);
-			int first = 1;
-			for(size_t i = 0; 
-				i < vec_getsize(exprnode->branches[1]->branches); 
-				i++)
-			{ 
-				if(!first)
-				{ 
-					str_append(ccode, ", ");
-				}
-
-				generateexpr(ccode, exprnode->branches[1]->branches[i]);
-				first = 0;
-			}
-			str_append(ccode, ")");
+			generatefunccall(ccode, exprnode, funcname);
 		}
 		else if(exprnode->descriptor == ASTNODETYPE_TYPECAST)
 		{ 
@@ -120,7 +162,7 @@ static void generateexpr(struct Str* ccode, struct ASTNode* exprnode)
 				"(erwall_%s)(", 
 				exprnode->branches[0]->token.text
 			);
-			generateexpr(ccode, exprnode->branches[1]);
+			generateexpr(ccode, exprnode->branches[1], funcname);
 			str_append(ccode, ")");
 		}
 	}
@@ -184,7 +226,7 @@ static void generateblock(
 				{ 
 					str_appendfmt(
 						&funccode, 
-						"\nerwall_%s ", 
+						"\nerwall__%s ", 
 						retnode->branches[0]->token.text
 					);
 				}
@@ -195,7 +237,7 @@ static void generateblock(
 
 				str_appendfmt(
 					&funccode, 
-					"erwall_%s_%s(", 
+					"erwall__%s__%s(", 
 					funcname,
 					namenode->token.text
 				); 
@@ -250,7 +292,7 @@ static void generateblock(
 
 				str_appendfmt(
 					&funccode, 
-					"erwall_%s_%s(", 
+					"erwall__%s__%s(", 
 					funcname,
 					namenode->token.text
 				); 
@@ -287,11 +329,19 @@ static void generateblock(
 				}
 
 				str_append(&funccode, ")\n");
+				struct Str newfuncname; //NOTE: Memory leak
+				str_ctorfmt( 
+					&newfuncname, 
+					"%s_%s", 
+					funcname, 
+					namenode->token.text
+				);
+
 				generateblock(
 					&funccode, 
 					blocknode, 
 					newfuncpos, 
-					namenode->token.text,
+					newfuncname.data,
 					0
 				);
 
@@ -316,7 +366,11 @@ static void generateblock(
 				if(vec_getsize(letnode->branches[2]->branches))
 				{ 
 					str_append(ccode, " = ");
-					generateexpr(ccode, letnode->branches[2]->branches[0]);
+					generateexpr(
+						ccode, 
+						letnode->branches[2]->branches[0], 
+						funcname
+					);
 				}
 
 				str_append(ccode, ";\n");
@@ -334,7 +388,11 @@ static void generateblock(
 				if(vec_getsize(letnode->branches[2]->branches))
 				{ 
 					str_append(ccode, " = ");
-					generateexpr(ccode, letnode->branches[2]->branches[0]);
+					generateexpr(
+						ccode, 
+						letnode->branches[2]->branches[0],
+						funcname
+					);
 				}
 
 				str_append(ccode, ";\n");
@@ -343,7 +401,7 @@ static void generateblock(
 			{ 
 				struct ASTNode* ifnode = block->branches[i];
 				str_append(ccode, "\tif(");
-				generateexpr(ccode, ifnode->branches[0]);
+				generateexpr(ccode, ifnode->branches[0], funcname);
 				str_append(ccode, ")\n");
 				generateblock(
 					ccode, 
@@ -359,7 +417,11 @@ static void generateblock(
 						TOKENTYPE_KEYWORD_ELSEIF)
 					{ 
 						str_append(ccode, "\telse if(");
-						generateexpr(ccode, ifnode->branches[j]->branches[0]);
+						generateexpr(
+							ccode, 
+							ifnode->branches[j]->branches[0], 
+							funcname
+						);
 						str_append(ccode, ")\n");
 						generateblock(
 							ccode, 
@@ -381,11 +443,12 @@ static void generateblock(
 						);
 					}
 				}
+				str_append(ccode, "\n");
 			}
 			else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_RETURN)
 			{ 
 				str_append(ccode, "\treturn ");
-				generateexpr(ccode, block->branches[i]->branches[0]);
+				generateexpr(ccode, block->branches[i]->branches[0], funcname);
 				str_append(ccode, ";\n");
 			}
 			else if(block->branches[i]->token.type == TOKENTYPE_FOREIGN)
@@ -402,7 +465,11 @@ static void generateblock(
 						str_append(ccode, ", ");
 					}
 
-					generateexpr(ccode, foreignnode->branches[0]->branches[j]);
+					generateexpr(
+						ccode, 
+						foreignnode->branches[0]->branches[j],
+						funcname
+					);
 					first = 0;
 				}
 				str_append(ccode, ");\n");
@@ -412,27 +479,9 @@ static void generateblock(
 		{ 
 			if(block->branches[i]->descriptor == ASTNODETYPE_FUNC_CALL)
 			{ 
-				struct ASTNode* callnode = block->branches[i];
-				str_appendfmt(
-					ccode, 
-					"\terwall_%s(", 
-					callnode->branches[0]->token.text
-				);
-
-				int first = 1;
-				for(size_t j = 0; 
-					j < vec_getsize(callnode->branches[1]->branches); 
-					j++)
-				{ 
-					if(!first)
-					{ 
-						str_append(ccode, ", ");
-					}
-
-					generateexpr(ccode, callnode->branches[1]->branches[j]);
-					first = 0;
-				}
-				str_append(ccode, ");\n");
+				str_append(ccode, "\t");
+				generatefunccall(ccode, block->branches[i], funcname);
+				str_append(ccode, ";\n");
 			}
 		}
 	}

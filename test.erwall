@@ -1,29 +1,35 @@
-type None;
-
-func test: ()
+func fib: (let x: UInt64) -> UInt64
 { 
-	func fib: (let x: UInt64) -> UInt64
+	if(x == UInt64(0))
 	{ 
-		if(x == UInt64(0))
-		{ 
-			return UInt64(0);
-		}
-		elseif(x == UInt64(1) || x == UInt64(2))
-		{ 
-			return UInt64(1);
-		}
-		else
-		{ 
-			return fib(x - UInt64(2)) + fib(x - UInt64(1));
-		}
+		return UInt64(0);
+	}
+	elseif(x == UInt64(1) || x == UInt64(2))
+	{ 
+		return UInt64(1);
+	}
+	else
+	{ 
+		return fib(x - UInt64(2)) + fib(x - UInt64(1));
 	}
 
-	@printf("%lu\n", fib(UInt64(40)));
 }
 
 func main: () -> Int32
 { 
-	test();
+	func localfunc: ()
+	{
+		func morelocalfunc: ()
+		{
+			@puts("lol");
+		}
+		@puts("Hello");
+		morelocalfunc();
+	}
+
+	localfunc();
+
+	@printf("%lu\n", fib(UInt64(10)));
 	return 0;
 }
 

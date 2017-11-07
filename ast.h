@@ -49,6 +49,7 @@ struct ASTNode
 
 	Vec(struct ASTNode*) branches;
 	struct ASTNode* parent;
+	void* udata;
 	int istoken;
 };
 

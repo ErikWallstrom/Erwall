@@ -45,6 +45,7 @@ struct ASTNode* ast_newfromtoken(struct Token token)
 	self->parent = NULL;
 	self->token = token;
 	self->istoken = 1;
+	self->udata = NULL;
 
 	return self;
 }

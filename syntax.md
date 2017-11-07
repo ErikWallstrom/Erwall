@@ -42,3 +42,15 @@ func name: (arguments) -> return_type {};
 func print: (text: Char[]) {};
 ```
 
+# If statement
+
+```erwall
+if(bool) {} elseif(bool){} else {}
+
+if(3 < 10)
+{
+}
+else
+{
+}
+```

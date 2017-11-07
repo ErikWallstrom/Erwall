@@ -46,7 +46,9 @@ void compile(struct Str* ccode, const char* filename)
 		"gcc %s -o %.*s -Wall -Wextra -Wshadow -Wstrict-prototypes"
 			" -Wdouble-promotion -Wjump-misses-init -Wnull-dereference"
 			" -Wrestrict -Wlogical-op -Wduplicated-branches -Wduplicated-cond"
-			" -O3 -march=native -mtune=native -lm", //Should this be -O2?
+			//" -O3 -march=native -mtune=native" //Should this be -O2?
+			" -Og -g3"
+			" -lm",
 		cfilename.data,
 		(int)(strchr(filename, '.') - filename), 
 		filename
