@@ -17,12 +17,14 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef GENERATOR_H
-#define GENERATOR_H
+#ifndef ERW_PARSER_H
+#define ERW_PARSER_H
 
-#include "semantics.h"
-#include "str.h"
+#include "erw_ast.h"
 
-struct Str generate(struct ASTNode* ast);
+struct erw_ASTNode* erw_parse(
+	Vec(struct erw_Token) tokens, 
+	Vec(struct Str) lines
+);
 
 #endif

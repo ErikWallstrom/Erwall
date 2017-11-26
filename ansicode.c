@@ -155,6 +155,67 @@ void ansicode_printf(struct ANSICode* self, const char* fmt, ...)
 	va_end(vlist);
 }
 
+void ansicode_fprintf(struct ANSICode* self, FILE* file, const char* fmt, ...)
+{
+	log_assert(self, "is NULL");
+	log_assert(file, "is NULL");
+	log_assert(fmt, "is NULL");
+
+	//If NULL or unknown use default
+	if(!self->fg)
+	{
+		self->fg = ANSICODE_FG_DEFAULT;
+	}
+	if(!self->bg)
+	{
+		self->bg = ANSICODE_BG_DEFAULT;
+	}
+
+	log_assert(
+		ansicode_checkfg(self), 
+		"'%s' is not a valid foreground", 
+		self->fg->name
+	);
+	log_assert(
+		ansicode_checkbg(self), 
+		"'%s' is not a valid background", 
+		self->bg->name
+	);
+
+	va_list vlist;
+	va_start(vlist, fmt);
+
+	fprintf(
+		file,
+		"%s%s%s%s", 
+		ANSICODE_BEGIN, 
+		self->fg->name, 
+		ANSICODE_SEPARATOR, 
+		self->bg->name
+	);
+
+	if(self->bold)
+	{
+		fprintf(file, "%s%s", ANSICODE_SEPARATOR, ANSICODE_BOLD);
+	}
+
+	if(self->italic)
+	{
+		fprintf(file, "%s%s", ANSICODE_SEPARATOR, ANSICODE_ITALIC);
+	}
+
+	if(self->underline)
+	{
+		fprintf(file, "%s%s", ANSICODE_SEPARATOR, ANSICODE_UNDERLINE);
+	}
+
+	fprintf(file, "%s", ANSICODE_END);
+	vfprintf(file, fmt, vlist);
+	fprintf(file, "%s%s%s", ANSICODE_BEGIN, ANSICODE_RESET, ANSICODE_END);
+
+	va_end(vlist);
+}
+
 //Identical to ansicode_printf basically
 void ansicode_vprintf(struct ANSICode* self, const char* fmt, va_list vlist)
 {

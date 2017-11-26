@@ -17,63 +17,37 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "erw_semantics.h"
 #include "argparser.h"
-#include "generator.h"
 #include "ansicode.h"
 #include "file.h"
 #include "log.h"
-
 #include <stdlib.h>
 
-void compile(struct Str* ccode, const char* filename)
-{ 
-	struct Str cfilename;
-	str_ctorfmt(
-		&cfilename, 
-		"%.*s.c", 
-		(int)(strchr(filename, '.') - filename), 
-		filename
-	);
+static Vec(struct Str) getlines(const char* source)
+{
+	log_assert(source, "is NULL");
 
-	struct File cfile;
-	file_ctor(&cfile, cfilename.data, FILEMODE_WRITE);
-	vec_pushwitharr(cfile.content, ccode->data, ccode->len);
-	file_dtor(&cfile);
-
-	struct Str command;
-	str_ctorfmt(
-		&command, 
-		"gcc %s -o %.*s -Wall -Wextra -Wshadow -Wstrict-prototypes"
-			" -Wdouble-promotion -Wjump-misses-init -Wnull-dereference"
-			" -Wrestrict -Wlogical-op -Wduplicated-branches -Wduplicated-cond"
-			//" -O3 -march=native -mtune=native" //Should this be -O2?
-			" -Og -g3"
-			" -lm",
-		cfilename.data,
-		(int)(strchr(filename, '.') - filename), 
-		filename
-	);
-
-	int ret = system(command.data);
-	if(ret) //NOTE: This does not seem to work
-	{ 
-		log_error("C Compilation failed");
+	Vec(struct Str) lines = vec_ctor(struct Str, 0);
+	char* newlinepos;
+	while((newlinepos = strchr(source, '\n')))
+	{
+		struct Str line;
+		size_t offset = newlinepos - source + 1;
+		str_ctorfmt(&line, "%.*s", (int)(offset - 1), source);
+		vec_pushback(lines, line);
+		source += offset;
 	}
 
-	remove(cfilename.data);
-	str_dtor(&command);
-	str_dtor(&cfilename);
+	struct Str line;
+	str_ctor(&line, "");
+	vec_pushback(lines, line);
+	return lines;
 }
 
-void onargerror(void* udata)
+static void onargerror(void* udata)
 { 
 	argparser_printhelp(udata);
-	abort();
-}
-
-void onerror(void* udata)
-{ 
-	(void)udata;
 	abort();
 }
 
@@ -99,7 +73,6 @@ int main(int argc, char* argv[])
 
 	if(argparser.results[0].used)
 	{
-		log_seterrorhandler(onerror, NULL);
 		struct ANSICode titlecolor = {
 			.fg = ANSICODE_FG_GREEN, 
 			.bold = 1, 
@@ -108,9 +81,10 @@ int main(int argc, char* argv[])
 
 		struct File file;
 		file_ctor(&file, argparser.results[0].arg, FILEMODE_READ);
-		Vec(struct Token) tokens = tokenize(file.content);
 
-		if(argparser.results[1].used)
+		Vec(struct Str) lines = getlines(file.content);
+		Vec(struct erw_Token) tokens = erw_tokenize(file.content, lines);
+		if(argparser.results[1].used) //--tokenize
 		{ 
 			ansicode_printf(&titlecolor, "\nTokens:\n\n");
 			for(size_t i = 0; i < vec_getsize(tokens); i++)
@@ -124,41 +98,15 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		struct ASTNode* ast = parse(tokens);
-
+		struct erw_ASTNode* ast = erw_parse(tokens, lines);
 		if(argparser.results[2].used)
 		{ 
 			ansicode_printf(&titlecolor, "\nAbstract Syntax Tree:\n\n");
-			ast_print(ast);
+			erw_ast_print(ast);
 			putchar('\n');
 		}
 
-		checksemantics(ast);
-		struct Str ccode = generate(ast);
-
-		if(argparser.results[3].used)
-		{ 
-			ansicode_printf(&titlecolor, "\nGenerated code:\n\n");
-			printf("%s\n", ccode.data);
-		}
-
-		if(argparser.results[4].used)
-		{ 
-			ansicode_printf(&titlecolor, "\nCompilation Output:\n\n");
-			compile(&ccode, argparser.results[0].arg);
-		}
-
-		//Cleanup
-		//TODO: Cleanup of scopes
-		str_dtor(&ccode);
-		ast_dtor(ast);
-
-		for(size_t i = 0; i < vec_getsize(tokens); i++)
-		{
-			vec_dtor(tokens[i].text);
-		}
-
-		vec_dtor(tokens);
+		erw_checksemantics(ast, lines);
 		file_dtor(&file);
 	}
 	else
@@ -168,4 +116,3 @@ int main(int argc, char* argv[])
 
 	argparser_dtor(&argparser);
 }
-

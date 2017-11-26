@@ -21,6 +21,7 @@
 #define ANSICODE_H
 
 #include <stdarg.h>
+#include <stdio.h>
 
 struct ANSICodeFg 
 {
@@ -63,6 +64,8 @@ extern const struct ANSICodeBg* const ANSICODE_BG_DEFAULT;
 
 void ansicode_printf(struct ANSICode* self, const char* fmt, ...)
 	__attribute__((format(printf, 2, 3)));
+void ansicode_fprintf(struct ANSICode* self, FILE* file, const char* fmt, ...)
+	__attribute__((format(printf, 3, 4)));
 void ansicode_vprintf(struct ANSICode* self, const char* fmt, va_list args)
 	__attribute__((format(printf, 2, 0)));
 

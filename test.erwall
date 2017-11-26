@@ -1,20 +1,39 @@
+func fib: (let n: Int32) -> Int32
+{
+	if(n == 0)
+	{
+		return 0;
+	}
+	elseif(n == 1 || n == 2)
+	{
+		return 1;
+	}
+	else
+	{
+		return fib(n - 1) + fib(n - 2);
+	}
+}
+
 func main: () -> Int32
 { 
-	func test: (let x: Int32)
+	let x: Int32;
+	func test: ()
 	{
 		type Int: Int32;
-		func cmp: () -> Int
+		func testa: (let yaaslkdj: Int)
 		{
-			return Int(32);
+			@puts(yaaslkdj);
 		}
 
-		cmp();
-		test(12);
-		main();
+		testa(cast(Int, 3));
 	}
 
-	test(33);
-	main();
+	test();
+	if(x < 3)
+	{
+	}
+
+	@printf("%i\n", fib(30));
 	return 0;
 }
 

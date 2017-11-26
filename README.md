@@ -40,6 +40,11 @@
 
 ## Ideas
 
+* Nested comments ✔
+* Nested functions ✔
+* Compatible with C ✔
+* Readable generated C code ✔
+* Strict types (no implicit int to float or enum to int conversions) ✔
 * Arrays as first-class citizens
 * Size of arrays known
 * Compile time bounds checking (zero cost)
@@ -48,16 +53,11 @@
 * Defer (like Go)
 * Anonymous struct in structs (like Go)
 * Compile time execution and loading of strings
-* Nested comments ✔
-* Nested functions ✔
-* Compatible with C ✔
-* Readable generated C code ✔
-* Strict types (no implicit int to float or enum to int conversions) ✔
 
 * Literal heavy (why declare variables when what you really want are values?) (?)
 * Default values for structs (?)
 * Switch working for all types (?)
-* Const by default (?)
+* Const by default (?) ✔
 * Forced type naming conventions, i.e starting with capital letter (?) ✔
 * Resizable arrays (?)
 * Type inference (?)

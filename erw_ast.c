@@ -17,48 +17,51 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "ast.h"
+#include "erw_ast.h"
 #include "log.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-const struct ASTNodeType* const ASTNODETYPE_START = 		&(struct ASTNodeType){"Start"};
-const struct ASTNodeType* const ASTNODETYPE_BLOCK = 		&(struct ASTNodeType){"Block"};
-const struct ASTNodeType* const ASTNODETYPE_ARRAY = 		&(struct ASTNodeType){"Array"};
-const struct ASTNodeType* const ASTNODETYPE_POINTER = 		&(struct ASTNodeType){"Pointer"};
-const struct ASTNodeType* const ASTNODETYPE_TYPECAST = 		&(struct ASTNodeType){"Type Cast"};
-const struct ASTNodeType* const ASTNODETYPE_VAR_VALUE = 	&(struct ASTNodeType){"Variable value"};
-const struct ASTNodeType* const ASTNODETYPE_FUNC_ARG = 		&(struct ASTNodeType){"Function Argument"};
-const struct ASTNodeType* const ASTNODETYPE_FUNC_CALL = 	&(struct ASTNodeType){"Function Call"};
-const struct ASTNodeType* const ASTNODETYPE_FUNC_ARGS = 	&(struct ASTNodeType){"Function Arguments"};
-const struct ASTNodeType* const ASTNODETYPE_FUNC_RETURN = 	&(struct ASTNodeType){"Function Return"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_START =
+	&(struct erw_ASTNodeType){"Start"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_BLOCK = 
+	&(struct erw_ASTNodeType){"Block"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_VAR_VALUE =
+	&(struct erw_ASTNodeType){"Variable value"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNC_ARG =
+	&(struct erw_ASTNodeType){"Function Argument"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNC_CALL =
+	&(struct erw_ASTNodeType){"Function Call"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNC_ARGS =
+	&(struct erw_ASTNodeType){"Function Arguments"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNC_RETURN = 
+	&(struct erw_ASTNodeType){"Function Return"};
 
-struct ASTNode* ast_newfromtoken(struct Token token)
+struct erw_ASTNode* erw_ast_newfromtoken(struct erw_Token token)
 {
-	struct ASTNode* self = malloc(sizeof(struct ASTNode));
+	struct erw_ASTNode* self = malloc(sizeof(struct erw_ASTNode));
 	if(!self)
 	{
 		log_error("malloc failed, in <%s>", __func__);
 	}
 
-	self->branches = vec_ctor(struct ASTNode*, 0);
+	self->branches = vec_ctor(struct erw_ASTNode*, 0);
 	self->parent = NULL;
 	self->token = token;
 	self->istoken = 1;
-	self->udata = NULL;
 
 	return self;
 }
 
-struct ASTNode* ast_newfromnodetype(const struct ASTNodeType* type)
+struct erw_ASTNode* erw_ast_newfromnodetype(const struct erw_ASTNodeType* type)
 {
-	struct ASTNode* self = malloc(sizeof(struct ASTNode));
+	struct erw_ASTNode* self = malloc(sizeof(struct erw_ASTNode));
 	if(!self)
 	{
 		log_error("malloc failed, in <%s>", __func__);
 	}
 
-	self->branches = vec_ctor(struct ASTNode*, 0);
+	self->branches = vec_ctor(struct erw_ASTNode*, 0);
 	self->parent = NULL;
 	self->descriptor = type;
 	self->istoken = 0;
@@ -66,7 +69,7 @@ struct ASTNode* ast_newfromnodetype(const struct ASTNodeType* type)
 	return self;
 }
 
-void ast_addbranch(struct ASTNode* root, struct ASTNode* branch)
+void erw_ast_addbranch(struct erw_ASTNode* root, struct erw_ASTNode* branch)
 {
 	log_assert(root, "is NULL");
 	log_assert(branch, "is NULL");
@@ -75,7 +78,7 @@ void ast_addbranch(struct ASTNode* root, struct ASTNode* branch)
 	vec_pushback(root->branches, branch);
 }
 
-static void ast_printinternal(struct ASTNode* ast, size_t level)
+static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 {
 	if(ast != NULL)
 	{
@@ -96,24 +99,24 @@ static void ast_printinternal(struct ASTNode* ast, size_t level)
 
 		for(size_t i = 0; i < vec_getsize(ast->branches); i++)
 		{
-			ast_printinternal(ast->branches[i], level + 1);
+			erw_ast_printinternal(ast->branches[i], level + 1);
 		}
 	}
 }
 
-void ast_print(struct ASTNode* ast)
+void erw_ast_print(struct erw_ASTNode* ast)
 {
 	log_assert(ast, "is NULL");
-	ast_printinternal(ast, 0);
+	erw_ast_printinternal(ast, 0);
 }
 
 inline
-void ast_dtor(struct ASTNode* ast)
+void erw_ast_dtor(struct erw_ASTNode* ast)
 {
 	log_assert(ast, "is NULL");
 	for(size_t i = 0; i < vec_getsize(ast->branches); i++)
 	{
-		ast_dtor(ast->branches[i]);
+		erw_ast_dtor(ast->branches[i]);
 	}
 
 	vec_dtor(ast->branches);

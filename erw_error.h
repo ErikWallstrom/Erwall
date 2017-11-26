@@ -17,28 +17,17 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef SEMANTICS_H
-#define SEMANTICS_H
+#ifndef ERW_ERROR
+#define ERW_ERROR
 
-#include "parser.h"
+#include <stddef.h>
 
-struct FunctionSemantics
-{
-	int isglobal;
-	int used;
-};
-
-struct FunctionCallSemantics
-{
-	int isglobal;
-};
-
-struct VariableSemantics
-{
-	int used;
-	int hasvalue;
-};
-
-void checksemantics(struct ASTNode* ast);
+void erw_error(
+	const char* msg, 
+	const char* line, 
+	size_t linenum, 
+	size_t column, 
+	size_t to
+);
 
 #endif
