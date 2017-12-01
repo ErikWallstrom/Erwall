@@ -16,7 +16,7 @@ func fib: (let n: Int32) -> Int32
 
 func main: () -> Int32
 { 
-	let x: Int32;
+	let x: Int32 = 12;
 	func test: ()
 	{
 		type Int: Int32;

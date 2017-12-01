@@ -18,6 +18,7 @@
 */
 
 #include "erw_semantics.h"
+#include "erw_optimizer.h"
 #include "argparser.h"
 #include "ansicode.h"
 #include "file.h"
@@ -106,7 +107,23 @@ int main(int argc, char* argv[])
 			putchar('\n');
 		}
 
-		erw_checksemantics(ast, lines);
+		struct erw_Scope* scope = erw_checksemantics(ast, lines);
+		erw_optimize(ast, scope, lines);
+
+		//Cleanup
+		erw_scope_dtor(scope);
+		erw_ast_dtor(ast);
+		for(size_t i = 0; i < vec_getsize(tokens); i++)
+		{
+			vec_dtor(tokens[i].text);
+		}
+		vec_dtor(tokens);
+
+		for(size_t i = 0; i < vec_getsize(lines); i++)
+		{
+			str_dtor(&lines[i]);
+		}
+		vec_dtor(lines);
 		file_dtor(&file);
 	}
 	else
@@ -116,3 +133,4 @@ int main(int argc, char* argv[])
 
 	argparser_dtor(&argparser);
 }
+

@@ -464,6 +464,11 @@ void erw_scope_dtor(struct erw_Scope* self)
 {
 	log_assert(self, "is NULL");
 
+	for(size_t i = 0; i < vec_getsize(self->children); i++)
+	{
+		erw_scope_dtor(self->children[i]);
+	}
+
 	vec_dtor(self->functions);
 	vec_dtor(self->variables);
 	vec_dtor(self->types);

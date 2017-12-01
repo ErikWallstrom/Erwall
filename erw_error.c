@@ -38,7 +38,7 @@ void erw_error(
 	struct ANSICode numcolor = {.fg = ANSICODE_FG_BLUE, .bold = 1};
 	struct ANSICode markcolor = {.fg = ANSICODE_FG_MAGENTA, .bold = 1};
 
-	ansicode_fprintf(&errcolor, stderr, "Error: ");
+	ansicode_fprintf(&errcolor, stderr, "\nError: ");
 	fprintf(stderr, "(line ");
 	ansicode_fprintf(&numcolor, stderr, "%zu", linenum);
 	fprintf(stderr, ", column ");

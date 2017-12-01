@@ -748,6 +748,9 @@ static void erw_checkfunc(
 
 static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 {
+	log_assert(scope, "is NULL");
+	log_assert(lines, "is NULL");
+
 	for(size_t i = 0; i < vec_getsize(scope->variables); i++)
 	{
 		struct erw_VariableSymbol* var = &scope->variables[i];
@@ -821,6 +824,168 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 	}
 }
 
+static int erw_checkifreturn(struct erw_ASTNode* ifnode)
+	//XXX: Ugly implementation
+{
+	log_assert(ifnode, "is NULL");
+
+	if(vec_getsize(ifnode->branches) < 3 || 
+		ifnode->branches[vec_getsize(ifnode->branches) - 1]->token.type !=
+			erw_TOKENTYPE_KEYWORD_ELSE)
+	{
+		return 0;
+	}
+
+	struct erw_ASTNode* blocknode = ifnode->branches[1];
+	if(!vec_getsize(blocknode->branches))
+	{
+		return 0;
+	}
+
+	struct erw_ASTNode* laststatement = blocknode->branches[
+				vec_getsize(blocknode->branches) - 1];
+
+	if(laststatement->istoken)
+	{
+		if(laststatement->token.type == erw_TOKENTYPE_KEYWORD_RETURN)
+		{}
+		else if(laststatement->token.type == erw_TOKENTYPE_KEYWORD_IF)
+		{
+			erw_checkifreturn(laststatement);
+		}
+		else
+		{
+			return 0;
+		}
+	}
+	else
+	{
+		return 0;
+	}
+
+	for(size_t i = 2; i < vec_getsize(ifnode->branches); i++)
+	{
+		if(ifnode->branches[i]->token.type == erw_TOKENTYPE_KEYWORD_ELSEIF)
+		{
+			struct erw_ASTNode* elseifnode = ifnode->branches[i];
+			struct erw_ASTNode* eifblock = elseifnode->branches[1];
+			if(!vec_getsize(eifblock->branches))
+			{
+				return 0;
+			}
+
+			laststatement = eifblock->branches[
+				vec_getsize(eifblock->branches) - 1];
+
+			if(laststatement->istoken)
+			{
+				if(laststatement->token.type == erw_TOKENTYPE_KEYWORD_RETURN)
+				{}
+				else if(laststatement->token.type == erw_TOKENTYPE_KEYWORD_IF)
+				{
+					erw_checkifreturn(laststatement);
+				}
+				else
+				{
+					return 0;
+				}
+			}
+			else
+			{
+				return 0;
+			}
+		}
+		else
+		{
+			struct erw_ASTNode* elseblock = ifnode->branches[i]->branches[0];
+			if(!vec_getsize(elseblock->branches))
+			{
+				return 0;
+			}
+
+			laststatement = elseblock->branches[
+				vec_getsize(elseblock->branches) - 1];
+
+			if(laststatement->istoken)
+			{
+				if(laststatement->token.type == 
+					erw_TOKENTYPE_KEYWORD_RETURN)
+				{}
+				else if(laststatement->token.type == erw_TOKENTYPE_KEYWORD_IF)
+				{
+					erw_checkifreturn(laststatement);
+				}
+				else
+				{
+					return 0;
+				}
+			}
+			else
+			{
+				return 0;
+			}
+		}
+	}
+
+	return 1;
+}
+
+static void erw_checkreturn(struct erw_Scope* scope, struct Str* lines)
+{
+	log_assert(scope, "is NULL");
+	log_assert(lines, "is NULL");
+
+	for(size_t i = 0; i < vec_getsize(scope->functions); i++)
+	{
+		if(scope->functions[i].type) //Has return type
+		{
+			struct erw_ASTNode* blocknode = scope->functions[i].node->
+				branches[3];
+
+			int hasreturn = 0;
+			if(vec_getsize(blocknode->branches))
+			{
+				struct erw_ASTNode* laststatement = blocknode->branches[
+					vec_getsize(blocknode->branches) - 1];
+			
+				if(laststatement->istoken)
+				{
+					if(laststatement->token.type == erw_TOKENTYPE_KEYWORD_RETURN)
+					{
+						hasreturn = 1;
+					}
+					else if(laststatement->token.type == erw_TOKENTYPE_KEYWORD_IF)
+					{
+						hasreturn = erw_checkifreturn(laststatement);
+					}
+				}
+			}
+
+			if(!hasreturn)
+			{
+				struct Str msg;
+				str_ctor(&msg, "Function expects return at the end");
+				erw_error(
+					msg.data, 
+					lines[scope->functions->node->branches[0]->
+						token.linenum - 1].data,
+					scope->functions->node->branches[0]->token.linenum, 
+					scope->functions->node->branches[0]->token.column,
+					scope->functions->node->branches[0]->token.column +
+						vec_getsize(
+							scope->functions->node->branches[0]->token.text) - 2
+				);
+				str_dtor(&msg);
+			}
+		}
+	}
+
+	for(size_t i = 0; i < vec_getsize(scope->children); i++)
+	{
+		erw_checkreturn(scope->children[i], lines);
+	}
+}
+
 struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 {
 	log_assert(ast, "is NULL");
@@ -855,8 +1020,12 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 	{  
 		node = erw_ast_newfromtoken(typetoken);
 		token.text = types[i];
-		erw_ast_addbranch(node, erw_ast_newfromtoken(token));
+		struct erw_ASTNode* tokennode = erw_ast_newfromtoken(token);
+		erw_ast_addbranch(node, tokennode);
 		erw_scope_addtype(globalscope, node, lines);
+
+		//NOTE: Does this work well? seems sketchy
+		erw_ast_dtor(node);
 	}
 
 	//TODO: semantic check for main function
@@ -875,6 +1044,7 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 	}
 
 	erw_checkunused(globalscope, lines);
+	erw_checkreturn(globalscope, lines);
 	return globalscope;
 }
 
