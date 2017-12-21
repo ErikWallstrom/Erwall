@@ -16,20 +16,21 @@ func fib: (let n: Int32) -> Int32
 
 func main: () -> Int32
 { 
-	let x: Int32 = 12;
+	let hello: Int32 = 12;
+# fib(x);
 	func test: ()
 	{
 		type Int: Int32;
 		func testa: (let yaaslkdj: Int)
 		{
-			@puts(yaaslkdj);
+# @puts(yaaslkdj);
 		}
 
 		testa(cast(Int, 3));
 	}
 
 	test();
-	if(x < 3)
+	if(hello < 3)
 	{
 	}
 

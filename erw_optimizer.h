@@ -22,10 +22,6 @@
 
 #include "erw_semantics.h"
 
-void erw_optimize(
-	struct erw_ASTNode* ast, 
-	struct erw_Scope* scope, 
-	struct Str* lines
-);
+void erw_optimize(struct erw_ASTNode* ast, struct erw_Scope* scope);
 
 #endif

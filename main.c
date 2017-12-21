@@ -17,8 +17,7 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "erw_semantics.h"
-#include "erw_optimizer.h"
+#include "erw_interpreter.h"
 #include "argparser.h"
 #include "ansicode.h"
 #include "file.h"
@@ -58,6 +57,7 @@ int main(int argc, char* argv[])
 		{"file", "Which file to compile", 1},
 		{"tokenize", "Output tokens", 0},
 		{"parse", "Output abstract syntax tree", 0},
+		{"symtable", "Output the symbol table", 0},
 		{"generate", "Output C code", 0},
 		{"compile", "Compile the C code", 0},
 	};
@@ -108,7 +108,15 @@ int main(int argc, char* argv[])
 		}
 
 		struct erw_Scope* scope = erw_checksemantics(ast, lines);
-		erw_optimize(ast, scope, lines);
+		if(argparser.results[3].used)
+		{ 
+			ansicode_printf(&titlecolor, "\nSymbol Table:\n\n");
+			erw_scope_print(scope);
+			putchar('\n');
+		}
+
+		erw_optimize(ast, scope);
+		erw_interpret(ast, scope);
 
 		//Cleanup
 		erw_scope_dtor(scope);

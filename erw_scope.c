@@ -460,6 +460,64 @@ void erw_scope_addtype(
 	vec_pushback(self->types, symbol);
 }
 
+void erw_scope_printinternal(struct erw_Scope* self, size_t level)
+{
+	for(size_t i = 0; i < level; i++)
+	{
+		printf("    ");
+		printf("│");
+	}
+
+	printf("─ Scope Name: [%s]\n", self->funcname);
+
+	for(size_t i = 0; i < vec_getsize(self->types); i++)
+	{
+		for(size_t j = 0; j < level + 1; j++)
+		{
+			printf("    ");
+			printf("│");
+		}
+		printf("─ Type: %s (%s)\n", self->types[i].name, self->types[i].type);
+	}
+
+	for(size_t i = 0; i < level; i++)
+	{
+		printf("    ");
+		printf("│");
+	}
+
+	for(size_t i = 0; i < vec_getsize(self->functions); i++)
+	{
+		for(size_t j = 0; j < level + 1; j++)
+		{
+			printf("    ");
+			printf("│");
+		}
+		printf("─ Function: %s (%s)\n", self->functions[i].name, self->functions[i].type);
+	}
+
+	for(size_t i = 0; i < vec_getsize(self->variables); i++)
+	{
+		for(size_t j = 0; j < level + 1; j++)
+		{
+			printf("    ");
+			printf("│");
+		}
+		printf("─ Variable: %s (%s)\n", self->variables[i].name, self->variables[i].type);
+	}
+
+	for(size_t i = 0; i < vec_getsize(self->children); i++)
+	{
+		erw_scope_printinternal(self->children[i], level + 1);
+	}
+}
+
+void erw_scope_print(struct erw_Scope* self)
+{
+	log_assert(self, "is NULL");
+	erw_scope_printinternal(self, 0);
+}
+
 void erw_scope_dtor(struct erw_Scope* self)
 {
 	log_assert(self, "is NULL");

@@ -17,27 +17,11 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "erw_optimizer.h"
-#include "log.h"
+#ifndef ERW_GENERATOR_H
+#define ERW_GENERATOR_H
 
-static void erw_optimizefunc(struct erw_Scope* scope)
-{
-	for(size_t i = 0; i < vec_getsize(scope->functions); i++)
-	{
+#include "erw_semantics.h"
 
-	}
+struct Str erw_generate(struct erw_ASTNode* ast, struct erw_Scope* scope);
 
-	for(size_t i = 0; i < vec_getsize(scope->children); i++)
-	{
-		erw_optimizefunc(scope->children[i]);
-	}
-}
-
-void erw_optimize(struct erw_ASTNode* ast, struct erw_Scope* scope)
-{
-	log_assert(ast, "is NULL");
-	log_assert(scope, "is NULL");
-
-	erw_optimizefunc(scope);
-}
-
+#endif
