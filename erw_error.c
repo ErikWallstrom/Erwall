@@ -73,3 +73,49 @@ void erw_error(
 	abort();
 }
 
+void erw_warning(
+	const char* msg, 
+	const char* line, 
+	size_t linenum, 
+	size_t column, 
+	size_t to
+)
+{
+	log_assert(msg, "is NULL");
+
+	struct ANSICode warncolor = {.fg = ANSICODE_FG_YELLOW, .bold = 1};
+	struct ANSICode numcolor = {.fg = ANSICODE_FG_BLUE, .bold = 1};
+	struct ANSICode markcolor = {.fg = ANSICODE_FG_MAGENTA, .bold = 1};
+
+	ansicode_fprintf(&warncolor, stderr, "\nWarning: ");
+	fprintf(stderr, "(line ");
+	ansicode_fprintf(&numcolor, stderr, "%zu", linenum);
+	fprintf(stderr, ", column ");
+	ansicode_fprintf(&numcolor, stderr, "%zu", column);
+
+	size_t printpos = 0;
+	for(; printpos < strlen(line); printpos++)
+	{
+		if(!isblank(line[printpos]))
+		{
+			break;
+		}
+	}
+
+	fprintf(stderr, "): %s", msg);
+	if(linenum)
+	{
+		fprintf(stderr, "\n\n    %s\n    ", line + printpos);
+		for(size_t i = 0; i < column - printpos - 1; i++)
+		{
+			fprintf(stderr, " ");
+		}
+
+		ansicode_fprintf(&markcolor, stderr, "^");
+		for(size_t i = column; i < to; i++)
+		{
+			ansicode_fprintf(&markcolor, stderr, "~");
+		}
+		fprintf(stderr, "\n\n");
+	}
+}

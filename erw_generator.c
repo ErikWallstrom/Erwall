@@ -20,393 +20,376 @@
 #include "erw_generator.h"
 #include "log.h"
 
-static void generateexpr(
-	struct Str* ccode, 
-	struct ASTNode* exprnode,
-	const char* funcname 
-);
-static void generatefunccall(
-	struct Str* ccode, 
-	struct ASTNode* callnode, 
-	const char* curfuncname
-)
+#define ERW_PREFIX "erw"
+
+struct erw_BlockResult
 {
-	struct FunctionCallSemantics* semantics = callnode->udata;
-	if(semantics->isglobal)
-	{
-		str_appendfmt(
-			ccode, 
-			"erwall_%s(", 
-			callnode->branches[0]->token.text
-		);
-	}
-	else
-	{
-		str_appendfmt(
-			ccode, 
-			"erwall__%s(", 
-			callnode->branches[0]->token.text
-		);
-	}
+	struct Str blockcode;
+	struct Str header;
+};
 
-	int first = 1;
-	for(size_t i = 0; i < vec_getsize(callnode->branches[1]->branches); i++)
-	{ 
-		if(!first)
-		{ 
-			str_append(ccode, ", ");
-		}
+static struct Str erw_generatefunccall(
+	struct erw_ASTNode* callnode, 
+	struct erw_Scope* scope
+);
 
-		generateexpr(ccode, callnode->branches[1]->branches[i], curfuncname);
-		first = 0;
-	}
-	str_append(ccode, ")");
-}
+static struct Str erw_generateexpr(
+	struct erw_ASTNode* exprnode,
+	struct erw_Scope* scope)
+{
+	log_assert(exprnode, "is NULL");
+	log_assert(scope, "is NULL");
 
-static void generateexpr(
-	struct Str* ccode, 
-	struct ASTNode* exprnode, 
-	const char* funcname
-)
-{ 
+	struct Str code;
+	str_ctor(&code, "");
 	if(exprnode->istoken)
 	{ 
 		if(vec_getsize(exprnode->branches) > 1)
 		{ 
-			if(exprnode->token.type == TOKENTYPE_OPERATOR_POW)
+			if(exprnode->token.type == erw_TOKENTYPE_OPERATOR_POW)
 			{ 
-				str_append(ccode, "pow(");
-				generateexpr(ccode, exprnode->branches[0], funcname);
-				str_append(ccode, ", ");
-				generateexpr(ccode, exprnode->branches[1], funcname);
-				str_append(ccode, ")");
+
+			}
+			else if(exprnode->token.type == erw_TOKENTYPE_KEYWORD_CAST)
+			{
+				str_appendfmt(
+					&code, 
+					"(" ERW_PREFIX "_%s)(", 
+					exprnode->branches[0]->token.text
+				);
+
+				struct Str expr = erw_generateexpr(
+					exprnode->branches[1], 
+					scope
+				);
+
+				str_append(&code, expr.data);
+				str_append(&code, ")");
 			}
 			else
-			{ 
-				str_append(ccode, "(");
-				generateexpr(ccode, exprnode->branches[0], funcname);
-				str_appendfmt(ccode, " %s ", exprnode->token.text);
-				generateexpr(ccode, exprnode->branches[1], funcname);
-				str_append(ccode, ")");
+			{
+				str_append(&code, "("); //Is this needed?
+				struct Str expr1 = erw_generateexpr(
+					exprnode->branches[0], 
+					scope
+				);
+				str_append(&code, expr1.data);
+				str_appendfmt(&code, " %s ", exprnode->token.text);
+
+				struct Str expr2 = erw_generateexpr(
+					exprnode->branches[1], 
+					scope
+				);
+				str_append(&code, expr2.data);
+				str_append(&code, ")"); //Is this needed?
 			}
 		}
 		else if(vec_getsize(exprnode->branches) == 1)
 		{ 
-			if(exprnode->branches[0]->token.type == TOKENTYPE_OPERATOR_NOT)
+			if(exprnode->branches[0]->token.type == erw_TOKENTYPE_OPERATOR_NOT)
 			{ 
-				str_append(ccode, "!(");
-				generateexpr(
-					ccode, 
+				str_append(&code, "!(");
+				struct Str expr = erw_generateexpr(
 					exprnode->branches[0]->branches[0], 
-					funcname
+					scope
 				);
-				str_append(ccode, ")");
+
+				str_append(&code, expr.data);
+				str_append(&code, ")");
 			}
-			else if(exprnode->branches[0]->token.type == TOKENTYPE_OPERATOR_SUB)
+			else if(exprnode->branches[0]->token.type ==
+				erw_TOKENTYPE_OPERATOR_SUB)
 			{ 
-				str_append(ccode, "-(");
-				generateexpr(
-					ccode, 
+				str_append(&code, "-(");
+				struct Str expr = erw_generateexpr(
 					exprnode->branches[0]->branches[0], 
-					funcname
+					scope
 				);
-				str_append(ccode, ")");
+
+				str_append(&code, expr.data);
+				str_append(&code, ")");
 			}
 		}
 		else
-		{ 
-			if(exprnode->token.type == TOKENTYPE_LITERAL_BOOL)
+		{
+			if(exprnode->token.type == erw_TOKENTYPE_LITERAL_BOOL)
 			{ 
 				if(!strcmp(exprnode->token.text, "true"))
 				{ 
-					str_append(ccode, "erwall_true");
+					str_append(&code, ERW_PREFIX "_true");
 				}
 				else
 				{ 
-					str_append(ccode, "erwall_false");
+					str_append(&code, ERW_PREFIX "_false");
 				}
 			}
+			else if(exprnode->token.type == erw_TOKENTYPE_IDENT)
+			{ 
+				//log_info("!!! TYPE: %s");
+				str_appendfmt(&code, ERW_PREFIX "_%s", exprnode->token.text);
+			}
+			/*
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_INT)
 			{ 
-				str_append(ccode, exprnode->token.text);
+				str_append(&code, exprnode->token.text);
 			}
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_FLOAT)
 			{ 
-				str_append(ccode, exprnode->token.text);
+				str_append(&code, exprnode->token.text);
 			}
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_CHAR)
 			{ 
 				str_append(ccode, exprnode->token.text);
 			}
-			else if(exprnode->token.type == TOKENTYPE_IDENT)
-			{ 
-				str_appendfmt(ccode, "erwall_%s", exprnode->token.text);
-			}
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_STRING)
 			{ 
 				str_append(ccode, exprnode->token.text);
 			}
-		}
-	}
-	else
-	{ 
-		if(exprnode->descriptor == ASTNODETYPE_FUNC_CALL)
-		{ 
-			generatefunccall(ccode, exprnode, funcname);
-		}
-		else if(exprnode->descriptor == ASTNODETYPE_TYPECAST)
-		{ 
-			str_appendfmt(
-				ccode, 
-				"(erwall_%s)(", 
-				exprnode->branches[0]->token.text
-			);
-			generateexpr(ccode, exprnode->branches[1], funcname);
-			str_append(ccode, ")");
-		}
-	}
-}
-
-static void generatetypedeclr(struct Str* ccode, struct ASTNode* typenode)
-{ 
-	if(vec_getsize(typenode->branches) == 1)
-	{ 
-		str_appendfmt(
-			ccode, 
-			"typedef struct {char _;} erwall_%s;\n", 
-			typenode->branches[0]->token.text
-		);
-	}
-	else
-	{ 
-		str_appendfmt(
-			ccode, 
-			"typedef erwall_%s erwall_%s;\n", 
-			typenode->branches[1]->token.text,
-			typenode->branches[0]->token.text
-		);
-	}
-}
-
-static void generateblock(
-	struct Str* ccode, 
-	struct ASTNode* block, 
-	size_t funcpos,
-	const char* funcname,
-	size_t indentlvl)
-{ 
-	for(size_t i = 0; i < indentlvl; i++)
-	{ 
-		str_append(ccode, "\t");
-	}
-	str_append(ccode, "{\n");
-
-	for(size_t i = 0; i < indentlvl; i++)
-	{ 
-		str_append(ccode, "\t");
-	}
-
-	for(size_t i = 0; i < vec_getsize(block->branches); i++)
-	{ 
-		if(block->branches[i]->istoken)
-		{ 
-			if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
+			*/
+			else
 			{ 
-				struct ASTNode* funcnode = block->branches[i];
-				struct ASTNode* blocknode = funcnode->branches[3];
-				struct ASTNode* retnode = funcnode->branches[2];
-				struct ASTNode* namenode = funcnode->branches[0];
-				struct ASTNode* argsnode = funcnode->branches[1];
+				str_append(&code, exprnode->token.text);
+			}
+		}
+	}
+	else
+	{
+		if(exprnode->descriptor == erw_ASTNODETYPE_FUNC_CALL)
+		{ 
+			struct Str funccall = erw_generatefunccall(exprnode, scope);
+			str_append(&code, funccall.data);
+		}
+	}
 
-				struct Str funccode;
-				str_ctor(&funccode, "");
+	return code;
+}
 
-				if(vec_getsize(retnode->branches))
-				{ 
-					str_appendfmt(
-						&funccode, 
-						"\nerwall__%s ", 
-						retnode->branches[0]->token.text
-					);
-				}
-				else
-				{ 
-					str_append(&funccode, "\nvoid ");
-				}
+static struct Str erw_generatefunccall(
+	struct erw_ASTNode* callnode, 
+	struct erw_Scope* scope)
+{
+	log_assert(callnode, "is NULL");
+	log_assert(scope, "is NULL");
 
-				str_appendfmt(
-					&funccode, 
-					"erwall__%s__%s(", 
-					funcname,
-					namenode->token.text
-				); 
+	struct Str code;
+	str_ctor(&code, "");
 
-				size_t numargs = vec_getsize(argsnode->branches);
-				if(numargs)
-				{ 
-					int first = 1;
-					for(size_t j = 0; j < numargs; j++)
-					{ 
-						if(!first)
-						{ 
-							str_append(&funccode, ", ");
-						}
+	const char* lastname = "";
+	int found = 0;
+	int local = 0;
 
-						struct ASTNode* varnode = argsnode->branches[j];
-						if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
-						{ 
-							str_append(&funccode, "const ");
-						}
-
-						str_appendfmt(
-							&funccode, 
-							"erwall_%s erwall_%s", 
-							varnode->branches[1]->token.text,
-							varnode->branches[0]->token.text
-						);
-						
-						first = 0;
+	struct erw_Scope* tempscope = scope;
+	while(tempscope)
+	{
+		if(!found)
+		{
+			for(size_t i = 0; i < vec_getsize(tempscope->functions); i++)
+			{
+				if(!strcmp(
+					tempscope->functions[i].name, 
+					callnode->branches[0]->token.text))
+				{
+					if(tempscope->parent)
+					{
+						local = 1;
 					}
+
+					str_append(&code, tempscope->functions[i].name);
+					found = 1;
+					break;
 				}
-				else
-				{ 
-					str_append(&funccode, "void");
+			}
+		}
+
+		if(found)
+		{
+			if(tempscope->funcname) //NOTE: Too tired to judge this line
+			{
+				if(strcmp(lastname, tempscope->funcname))
+				{
+					str_prependfmt(&code, "%s_", tempscope->funcname);
 				}
+			}
 
-				str_append(&funccode, ");\n");
-				size_t newfuncpos = funccode.len;
+			lastname = tempscope->funcname;
+		}
 
-				if(vec_getsize(retnode->branches))
-				{ 
-					str_appendfmt(
-						&funccode, 
-						"\nerwall_%s ", 
-						retnode->branches[0]->token.text
-					);
-				}
-				else
-				{ 
-					str_append(&funccode, "\nvoid ");
-				}
+		tempscope = tempscope->parent;
+	}
 
-				str_appendfmt(
-					&funccode, 
-					"erwall__%s__%s(", 
-					funcname,
-					namenode->token.text
-				); 
+	if(local)
+	{
+		str_prepend(&code, ERW_PREFIX "__");
+	}
+	else
+	{
+		str_prepend(&code, ERW_PREFIX "_");
+	}
 
-				if(numargs)
-				{ 
-					int first = 1;
-					for(size_t j = 0; j < numargs; j++)
-					{ 
-						if(!first)
-						{ 
-							str_append(&funccode, ", ");
-						}
+	str_append(&code, "(");
+	int first = 1;
+	for(size_t i = 0; i < vec_getsize(callnode->branches[1]->branches); i++)
+	{
+		if(!first)
+		{
+			str_append(&code, ", ");
+		}
+		
+		struct Str expr = erw_generateexpr(
+			callnode->branches[1]->branches[i], 
+			scope
+		);
 
-						struct ASTNode* varnode = argsnode->branches[j];
-						if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
-						{ 
-							str_append(&funccode, "const ");
-						}
+		str_append(&code, expr.data);
+		first = 0;
+	}
 
-						str_appendfmt(
-							&funccode, 
-							"erwall_%s erwall_%s", 
-							varnode->branches[1]->token.text,
-							varnode->branches[0]->token.text
-						);
-						
-						first = 0;
-					}
-				}
-				else
-				{ 
-					str_append(&funccode, "void");
-				}
+	str_append(&code, ")");
+	printf("Func call: %s\n", code.data);
+	return code;
+}
 
-				str_append(&funccode, ")\n");
-				struct Str newfuncname; //NOTE: Memory leak
-				str_ctorfmt( 
-					&newfuncname, 
-					"%s_%s", 
-					funcname, 
-					namenode->token.text
+static struct Str erw_generatefuncprot(
+	struct erw_ASTNode* funcnode,
+	struct erw_Scope* scope
+);
+
+static struct Str erw_generatetypedeclr(
+	struct erw_ASTNode* typenode, 
+	struct erw_Scope* scope
+);
+
+static struct Str erw_generatetype(
+	struct erw_ASTNode* typenode, 
+	struct erw_Scope* scope
+);
+
+static struct erw_BlockResult erw_generateblock(
+	struct erw_ASTNode* blocknode, 
+	struct erw_Scope* blockscope,
+	size_t indentlvl
+)
+{
+	log_assert(blocknode, "is NULL");
+	log_assert(blockscope, "is NULL");
+
+	struct erw_BlockResult result;
+	str_ctor(&result.blockcode, "");
+	str_ctor(&result.header, "");
+
+	for(size_t i = 0; i < indentlvl; i++)
+	{ 
+		str_append(&result.blockcode, "\t");
+	}
+	str_append(&result.blockcode, "{\n");
+
+	for(size_t i = 0; i < indentlvl; i++)
+	{ 
+		str_append(&result.blockcode, "\t");
+	}
+
+	for(size_t i = 0; i < vec_getsize(blocknode->branches); i++)
+	{ 
+		if(blocknode->branches[i]->istoken)
+		{ 
+			if(blocknode->branches[i]->token.type == erw_TOKENTYPE_KEYWORD_FUNC)
+			{
+				struct erw_ASTNode* funcnode = blocknode->branches[i];
+				struct Str funcprot = erw_generatefuncprot(
+					funcnode, 
+					blockscope
 				);
 
-				generateblock(
-					&funccode, 
-					blocknode, 
-					newfuncpos, 
-					newfuncname.data,
+				size_t funcindex = 0;
+				for(size_t j = 0; j < vec_getsize(blockscope->children); j++)
+				{
+					if(!strcmp(
+						blockscope->children[j]->funcname, 
+						funcnode->branches[0]->token.text))
+					{
+						funcindex = j;
+						break;
+					}
+				}
+
+				struct erw_ASTNode* newblock = funcnode->branches[3];
+				struct erw_BlockResult newresult = erw_generateblock(
+					newblock, 
+					blockscope->children[funcindex], 
 					0
 				);
-
-				str_insert(ccode, funcpos, funccode.data);
-				str_dtor(&funccode);
+				str_appendfmt(&result.header, "%s", newresult.header.data);
+				str_appendfmt(&result.header, "%s\n", funcprot.data);
+				str_appendfmt(&result.header, "%s", newresult.blockcode.data);
 			}
-			else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
-			{ 
-				struct ASTNode* typenode = block->branches[i];
-				generatetypedeclr(ccode, typenode);
+			else if(blocknode->branches[i]->token.type == 
+				erw_TOKENTYPE_KEYWORD_TYPE)
+			{
+				struct erw_ASTNode* typenode = blocknode->branches[i];
+				struct Str typecode = erw_generatetypedeclr(
+					typenode, 
+					blockscope
+				);
+				str_appendfmt(&result.header, "%s\n", typecode.data);
 			}
-			else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_LET)
-			{ 
-				struct ASTNode* letnode = block->branches[i];
-				str_appendfmt(
-					ccode,
-					"\tconst erwall_%s erwall_%s",
-					letnode->branches[1]->token.text,
-					letnode->branches[0]->token.text
+			else if(blocknode->branches[i]->token.type == 
+				erw_TOKENTYPE_KEYWORD_LET || 
+				blocknode->branches[i]->token.type == erw_TOKENTYPE_KEYWORD_MUT)
+			{
+				struct erw_ASTNode* varnode = blocknode->branches[i];
+				struct Str type = erw_generatetype(
+					varnode->branches[1], 
+					blockscope
 				);
 
-				if(vec_getsize(letnode->branches[2]->branches))
-				{ 
-					str_append(ccode, " = ");
-					generateexpr(
-						ccode, 
-						letnode->branches[2]->branches[0], 
-						funcname
-					);
-				}
-
-				str_append(ccode, ";\n");
-			}
-			else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_MUT)
-			{ 
-				struct ASTNode* letnode = block->branches[i];
 				str_appendfmt(
-					ccode,
-					"\terwall_%s erwall_%s",
-					letnode->branches[1]->token.text,
-					letnode->branches[0]->token.text
+					&result.blockcode, 
+					"\t%s " ERW_PREFIX "_%s",
+					type.data,
+					varnode->branches[0]->token.text
 				);
 
-				if(vec_getsize(letnode->branches[2]->branches))
+				if(vec_getsize(varnode->branches[2]->branches))
 				{ 
-					str_append(ccode, " = ");
-					generateexpr(
-						ccode, 
-						letnode->branches[2]->branches[0],
-						funcname
+					str_append(&result.blockcode, " = ");
+					struct Str expr = erw_generateexpr(
+						varnode->branches[2]->branches[0], 
+						blockscope
 					);
+
+					str_append(&result.blockcode, expr.data);
 				}
 
-				str_append(ccode, ";\n");
+				str_append(&result.blockcode, ";\n");
 			}
-			else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_IF)
-			{ 
-				struct ASTNode* ifnode = block->branches[i];
-				str_append(ccode, "\tif(");
-				generateexpr(ccode, ifnode->branches[0], funcname);
-				str_append(ccode, ")\n");
-				generateblock(
-					ccode, 
+			else if(blocknode->branches[i]->token.type == 
+				erw_TOKENTYPE_KEYWORD_RETURN)
+			{
+				str_append(&result.blockcode, "\treturn");
+				if(vec_getsize(blocknode->branches[i]->branches))
+				{
+					struct Str expr = erw_generateexpr(
+						blocknode->branches[i]->branches[0], 
+						blockscope
+					);
+					str_appendfmt(&result.blockcode, " %s", expr.data);
+				}
+				str_append(&result.blockcode, ";\n");
+			}
+			else if(blocknode->branches[i]->token.type == 
+				erw_TOKENTYPE_KEYWORD_IF)
+			{
+				/*
+				struct erw_ASTNode* ifnode = blocknode->branches[i];
+				str_append(&result.blockcode, "\tif(");
+				struct Str expr = erw_generateexpr(
+					ifnode->branches[0], 
+					blockscope
+				);
+				str_appendfmt(&result.blockcode, "%s)\n", expr.data);
+				struct erw_BlockResult result = erw_generateblock(
 					ifnode->branches[1], 
-					funcpos, 
-					funcname,
+					blockscope, //XXX: Wrong scope, NEEDS FIX **************
 					indentlvl + 1
 				);
 
@@ -443,53 +426,240 @@ static void generateblock(
 					}
 				}
 				str_append(ccode, "\n");
-			}
-			else if(block->branches[i]->token.type == TOKENTYPE_KEYWORD_RETURN)
-			{ 
-				str_append(ccode, "\treturn ");
-				generateexpr(ccode, block->branches[i]->branches[0], funcname);
-				str_append(ccode, ";\n");
-			}
-			else if(block->branches[i]->token.type == TOKENTYPE_FOREIGN)
-			{ 
-				struct ASTNode* foreignnode = block->branches[i];
-				str_appendfmt(ccode, "\t%s(", foreignnode->token.text);
-				int first = 1;
-				for(size_t j = 0; 
-					j < vec_getsize(foreignnode->branches[0]->branches); 
-					j++)
-				{ 
-					if(!first)
-					{ 
-						str_append(ccode, ", ");
-					}
-
-					generateexpr(
-						ccode, 
-						foreignnode->branches[0]->branches[j],
-						funcname
-					);
-					first = 0;
-				}
-				str_append(ccode, ");\n");
+				*/
 			}
 		}
 		else
-		{ 
-			if(block->branches[i]->descriptor == ASTNODETYPE_FUNC_CALL)
+		{
+			if(blocknode->branches[i]->descriptor == erw_ASTNODETYPE_FUNC_CALL)
 			{ 
-				str_append(ccode, "\t");
-				generatefunccall(ccode, block->branches[i], funcname);
-				str_append(ccode, ";\n");
+				struct Str funccall = erw_generatefunccall(
+					blocknode->branches[i],
+					blockscope
+				);
+				str_appendfmt(&result.blockcode, "\t%s;\n", funccall.data);
 			}
 		}
 	}
 
 	for(size_t i = 0; i < indentlvl; i++)
 	{ 
-		str_append(ccode, "\t");
+		str_append(&result.blockcode, "\t");
 	}
-	str_append(ccode, "}\n");
+	str_append(&result.blockcode, "}\n");
+
+	return result;
+}
+
+static struct Str erw_generatefuncprot(
+	struct erw_ASTNode* funcnode,
+	struct erw_Scope* scope)
+{
+	log_assert(funcnode, "is NULL");
+	log_assert(scope, "is NULL");
+
+	struct Str code;
+	str_ctor(&code, "");
+
+	struct erw_ASTNode* retnode = funcnode->branches[2];
+	struct erw_ASTNode* namenode = funcnode->branches[0];
+	struct erw_ASTNode* argsnode = funcnode->branches[1];
+
+	const char* lastname = "";
+	int found = 0;
+	int local = 0;
+	struct erw_Scope* tempscope = scope;
+
+	while(tempscope)
+	{
+		if(!found)
+		{
+			for(size_t i = 0; i < vec_getsize(tempscope->functions); i++)
+			{
+				if(!strcmp(
+					tempscope->functions[i].name, 
+					namenode->token.text))
+				{
+					if(tempscope->parent)
+					{
+						local = 1;
+					}
+
+					str_append(&code, tempscope->functions[i].name);
+					found = 1;
+					break;
+				}
+			}
+		}
+
+		if(found)
+		{
+			if(tempscope->funcname) //NOTE: Too tired to judge this line
+			{
+				if(strcmp(lastname, tempscope->funcname))
+				{
+					str_prependfmt(&code, "%s_", tempscope->funcname);
+				}
+			}
+
+			lastname = tempscope->funcname;
+		}
+
+		tempscope = tempscope->parent;
+	}
+
+	if(local)
+	{
+		str_prepend(&code, ERW_PREFIX "__");
+	}
+	else
+	{
+		str_prepend(&code, ERW_PREFIX "_");
+	}
+
+	if(vec_getsize(retnode->branches))
+	{
+		struct Str type = erw_generatetype(retnode->branches[0], scope);
+		str_prependfmt(
+			&code, 
+			"\n%s ", 
+			type.data
+		);
+	}
+	else
+	{
+		str_prepend(&code, "\nvoid ");
+	}
+
+	str_append(&code, "("); 
+	size_t numargs = vec_getsize(argsnode->branches);
+	if(numargs)
+	{ 
+		int first = 1;
+		for(size_t j = 0; j < numargs; j++)
+		{ 
+			if(!first)
+			{ 
+				str_append(&code, ", ");
+			}
+
+			struct erw_ASTNode* varnode = argsnode->branches[j];
+			if(varnode->token.type == erw_TOKENTYPE_KEYWORD_LET)
+			{ 
+				str_append(&code, "const ");
+			}
+
+			struct Str type = erw_generatetype(varnode->branches[1], scope);
+			str_appendfmt(
+				&code, 
+				"%s " ERW_PREFIX "_%s", 
+				type.data,
+				varnode->branches[0]->token.text
+			);
+
+			first = 0;
+		}
+	}
+	else
+	{ 
+		str_append(&code, "void");
+	}
+
+	str_append(&code, ")");
+	return code;
+}
+
+static struct Str erw_generatetype(
+	struct erw_ASTNode* typenode, 
+	struct erw_Scope* scope)
+{
+	log_assert(typenode, "is NULL");
+	log_assert(scope, "is NULL");
+
+	struct Str code;
+	str_ctor(&code, "");
+
+	const char* lastname = "";
+	int found = 0;
+	int local = 0;
+
+	struct erw_Scope* tempscope = scope;
+	while(tempscope)
+	{
+		if(!found)
+		{
+			for(size_t i = 0; i < vec_getsize(tempscope->types); i++)
+			{
+				if(!strcmp(
+					tempscope->types[i].name, 
+					typenode->token.text))
+				{
+					if(tempscope->parent)
+					{
+						local = 1;
+					}
+
+					str_append(&code, tempscope->types[i].name);
+					found = 1;
+					break;
+				}
+			}
+		}
+
+		if(found)
+		{
+			if(tempscope->funcname) //NOTE: Too tired to judge this line
+			{
+				if(strcmp(lastname, tempscope->funcname))
+				{
+					str_prependfmt(&code, "%s_", tempscope->funcname);
+				}
+			}
+
+			lastname = tempscope->funcname;
+		}
+
+		tempscope = tempscope->parent;
+	}
+
+	if(local)
+	{
+		str_prepend(&code, ERW_PREFIX "__");
+	}
+	else
+	{
+		str_prepend(&code, ERW_PREFIX "_");
+	}
+
+	return code;
+}
+
+static struct Str erw_generatetypedeclr(
+	struct erw_ASTNode* typenode, 
+	struct erw_Scope* scope)
+{
+	log_assert(typenode, "is NULL");
+	log_assert(scope, "is NULL");
+
+	struct Str code;
+	if(vec_getsize(typenode->branches) == 1)
+	{ 
+		str_ctor(&code, "\ntypedef struct {char _;} ");
+		struct Str type = erw_generatetype(typenode->branches[0], scope);
+		str_append(&code, type.data);
+		str_append(&code, ";");
+	}
+	else
+	{ 
+		str_ctor(&code, "\ntypedef ");
+		struct Str type1 = erw_generatetype(typenode->branches[0], scope);
+		struct Str type2 = erw_generatetype(typenode->branches[1], scope);
+
+		str_appendfmt(&code, "%s ", type2.data);
+		str_appendfmt(&code, "%s;", type1.data);
+	}
+
+	return code;
 }
 
 struct Str erw_generate(struct erw_ASTNode* ast, struct erw_Scope* scope)
@@ -498,152 +668,82 @@ struct Str erw_generate(struct erw_ASTNode* ast, struct erw_Scope* scope)
 	log_assert(scope, "is NULL");
 
 	const char header[] = { 
-		"//Generated with Erwall\n\n"
+		"//Generated with Erwall\n\n" //TODO: Add date and time
 
 		"#include <inttypes.h>\n"
 		"#include <stdio.h>\n"
 		"#include <math.h>\n\n"
 
-		"typedef int8_t\t\terwall_Int8;\n"
-		"typedef int16_t\t\terwall_Int16;\n"
-		"typedef int32_t\t\terwall_Int32;\n"
-		"typedef int64_t\t\terwall_Int64;\n"
-		"typedef uint8_t\t\terwall_UInt8;\n"
-		"typedef uint16_t\terwall_UInt16;\n"
-		"typedef uint32_t\terwall_UInt32;\n"
-		"typedef uint64_t\terwall_UInt64;\n"
-		"typedef float\t\terwall_Float32;\n" //XXX: Not portable
-		"typedef double\t\terwall_Float64;\n" //XXX: Not portable
-		"typedef _Bool\t\terwall_Bool;\n\n"
+		"typedef int8_t\t\t"  ERW_PREFIX "_Int8;\n"
+		"typedef int16_t\t\t" ERW_PREFIX "_Int16;\n"
+		"typedef int32_t\t\t" ERW_PREFIX "_Int32;\n"
+		"typedef int64_t\t\t" ERW_PREFIX "_Int64;\n"
+		"typedef uint8_t\t\t" ERW_PREFIX "_UInt8;\n"
+		"typedef uint16_t\t"  ERW_PREFIX "_UInt16;\n"
+		"typedef uint32_t\t"  ERW_PREFIX "_UInt32;\n"
+		"typedef uint64_t\t"  ERW_PREFIX "_UInt64;\n"
+		"typedef float\t\t"   ERW_PREFIX "_Float32;\n" //XXX: Not portable
+		"typedef double\t\t"  ERW_PREFIX "_Float64;\n" //XXX: Not portable
+		"typedef _Bool\t\t"   ERW_PREFIX "_Bool;\n\n"
 
-		"enum {erwall_false, erwall_true};\n"
+		"enum {" ERW_PREFIX "_false, " ERW_PREFIX "_true};\n"
 	};
 
 	const char footer[] = { 
 		"\nint main(int argc, char* argv[])\n"
 		"{\n"
-		"\treturn erwall_main();\n"
+		"\treturn " ERW_PREFIX "_main();\n"
 		"}\n\n"
 	};
 
-	struct Str ccode;
-	str_ctor(&ccode, header);
+	struct Str code;
+	str_ctor(&code, header);
 
-	for(size_t i = 0; i < vec_getsize(ast->branches); i++)
-	{ 
-		if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_FUNC)
-		{ 
-			struct erw_ASTNode* funcnode = ast->branches[i];
-			struct erw_ASTNode* blocknode = funcnode->branches[3];
-			struct erw_ASTNode* retnode = funcnode->branches[2];
-			struct erw_ASTNode* namenode = funcnode->branches[0];
-			struct erw_ASTNode* argsnode = funcnode->branches[1];
+	for(size_t i = 0; i < vec_getsize(scope->types); i++)
+	{
+		if(!scope->types[i].native)
+		{
+			struct erw_ASTNode* typenode = scope->types[i].node;
+			struct Str typecode = erw_generatetypedeclr(typenode, scope);
 
-			if(vec_getsize(retnode->branches))
-			{ 
-				str_appendfmt(
-					&ccode, 
-					"\nerwall_%s ", 
-					retnode->branches[0]->token.text
-				);
-			}
-			else
-			{ 
-				str_append(&ccode, "\nvoid ");
-			}
-
-			str_appendfmt(&ccode, "erwall_%s(", namenode->token.text); 
-			size_t numargs = vec_getsize(argsnode->branches);
-			if(numargs)
-			{ 
-				int first = 1;
-				for(size_t j = 0; j < numargs; j++)
-				{ 
-					if(!first)
-					{ 
-						str_append(&ccode, ", ");
-					}
-
-					struct ASTNode* varnode = argsnode->branches[j];
-					if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
-					{ 
-						str_append(&ccode, "const ");
-					}
-
-					str_appendfmt(
-						&ccode, 
-						"erwall_%s erwall_%s", 
-						varnode->branches[1]->token.text,
-						varnode->branches[0]->token.text
-					);
-
-					first = 0;
-				}
-			}
-			else
-			{ 
-				str_append(&ccode, "void");
-			}
-
-			str_append(&ccode, ");\n");
-			size_t funcpos = ccode.len;
-
-			if(vec_getsize(retnode->branches))
-			{ 
-				str_appendfmt(
-					&ccode, 
-					"\nerwall_%s ", 
-					retnode->branches[0]->token.text
-				);
-			}
-			else
-			{ 
-				str_append(&ccode, "\nvoid ");
-			}
-
-			str_appendfmt(&ccode, "erwall_%s(", namenode->token.text); 
-			if(numargs)
-			{ 
-				int first = 1;
-				for(size_t j = 0; j < numargs; j++)
-				{ 
-					if(!first)
-					{ 
-						str_append(&ccode, ", ");
-					}
-
-					struct ASTNode* varnode = argsnode->branches[j];
-					if(varnode->token.type == TOKENTYPE_KEYWORD_LET)
-					{ 
-						str_append(&ccode, "const ");
-					}
-
-					str_appendfmt(
-						&ccode, 
-						"erwall_%s erwall_%s", 
-						varnode->branches[1]->token.text,
-						varnode->branches[0]->token.text
-					);
-
-					first = 0;
-				}
-			}
-			else
-			{ 
-				str_append(&ccode, "void");
-			}
-
-			str_append(&ccode, ")\n");
-			generateblock(&ccode, blocknode, funcpos, namenode->token.text, 0);
-		}
-		else if(ast->branches[i]->token.type == TOKENTYPE_KEYWORD_TYPE)
-		{ 
-			struct ASTNode* typenode = ast->branches[i];
-			generatetypedeclr(&ccode, typenode);
+			str_append(&code, typecode.data);
+			str_dtor(&typecode);
 		}
 	}
 
-	str_append(&ccode, footer);
-	return ccode;
+	/*
+	str_append(&code, "\n");
+	for(size_t i = 0; i < vec_getsize(scope->functions); i++)
+	{
+		struct erw_ASTNode* funcnode = scope->functions[i].node;
+		struct Str funcprot = erw_generatefuncprot(funcnode);
+
+		str_append(&code, funcprot.data);
+		str_append(&code, ";");
+		str_dtor(&funcprot);
+	}
+	*/
+
+	str_append(&code, "\n");
+	for(size_t i = 0; i < vec_getsize(scope->functions); i++)
+	{
+		struct erw_ASTNode* funcnode = scope->functions[i].node;
+		struct Str funcprot = erw_generatefuncprot(funcnode, scope);
+
+		struct erw_ASTNode* blocknode = funcnode->branches[3];
+		struct erw_BlockResult result = erw_generateblock(
+			blocknode, 
+			scope->children[i], 
+			0
+		);
+
+		str_append(&code, result.header.data);
+		str_appendfmt(&code, "%s\n", funcprot.data);
+		str_append(&code, result.blockcode.data);
+		str_dtor(&funcprot);
+	}
+
+	str_append(&code, footer);
+	return code;
 }
 

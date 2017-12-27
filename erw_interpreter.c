@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
 static void erw_interpreter_loadl8(struct erw_Interpreter* self)
 {
 	log_assert(self, "is NULL");
@@ -112,7 +113,6 @@ static void erw_interpreter_mod(struct erw_Interpreter* self)
 static void erw_interpreter_mov8(struct erw_Interpreter* self)
 {
 	log_assert(self, "is NULL");
-	*(uint8_t*)(self->instructions[self->ip + 1]) = 
 }
 
 static void erw_interpreter_mov16(struct erw_Interpreter* self)
@@ -190,6 +190,8 @@ static void erw_interpreter_run(struct erw_Interpreter* self)
 	}
 }
 
+*/
+
 struct erw_Interpreter* erw_interpreter_ctor(
 	struct erw_Interpreter* self, 
 	uint8_t* instructions,
@@ -211,8 +213,8 @@ struct erw_Interpreter* erw_interpreter_ctor(
 		log_error("malloc failed <%s>", __func__);
 	}
 
-	erw_interpreter_setrunners(self);
-	erw_interpreter_run(self);
+	//erw_interpreter_setrunners(self);
+	//erw_interpreter_run(self);
 
 	return self;
 }

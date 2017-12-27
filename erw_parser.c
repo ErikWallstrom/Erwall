@@ -519,9 +519,10 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 			else
 			{
 				erw_ast_addbranch(retnode, erw_parse_expression(parser));
-				erw_ast_addbranch(blocknode, retnode);
 				erw_parser_expect(parser, erw_TOKENTYPE_END);
 			}
+
+			erw_ast_addbranch(blocknode, retnode);
 			break; //Don't parse any statements after return
 		}
 		else if(erw_parser_check(parser, erw_TOKENTYPE_FOREIGN))

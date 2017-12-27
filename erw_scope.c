@@ -410,7 +410,8 @@ void erw_scope_addfunction(
 void erw_scope_addtype(
 	struct erw_Scope* self, 
 	struct erw_ASTNode* node,
-	struct Str* lines)
+	struct Str* lines,
+	int native)
 {
 	log_assert(self, "is NULL");
 	log_assert(node, "is NULL");
@@ -456,6 +457,7 @@ void erw_scope_addtype(
 
 	symbol.name = node->branches[0]->token.text;
 	symbol.node = node;
+	symbol.native = native;
 	symbol.used = 0;
 	vec_pushback(self->types, symbol);
 }
@@ -478,12 +480,6 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 			printf("│");
 		}
 		printf("─ Type: %s (%s)\n", self->types[i].name, self->types[i].type);
-	}
-
-	for(size_t i = 0; i < level; i++)
-	{
-		printf("    ");
-		printf("│");
 	}
 
 	for(size_t i = 0; i < vec_getsize(self->functions); i++)

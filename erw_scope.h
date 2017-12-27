@@ -48,6 +48,7 @@ struct erw_TypeSymbol
 	struct erw_ASTNode* node;
 	const char* name;
 	const char* type;
+	int native;
 	int used;
 };
 
@@ -90,7 +91,8 @@ void erw_scope_addfunction(
 void erw_scope_addtype(
 	struct erw_Scope* self, 
 	struct erw_ASTNode* node,
-	struct Str* lines
+	struct Str* lines,
+	int native
 );
 void erw_scope_print(struct erw_Scope* self);
 void erw_scope_dtor(struct erw_Scope* self);

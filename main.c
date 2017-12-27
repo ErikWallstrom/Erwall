@@ -17,7 +17,7 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "erw_interpreter.h"
+#include "erw_generator.h"
 #include "argparser.h"
 #include "ansicode.h"
 #include "file.h"
@@ -115,8 +115,15 @@ int main(int argc, char* argv[])
 			putchar('\n');
 		}
 
-		erw_optimize(ast, scope);
-		erw_interpret(ast, scope);
+		//erw_optimize(ast, scope);
+		//erw_interpret(ast, scope);
+
+		struct Str code = erw_generate(ast, scope);
+		if(argparser.results[4].used)
+		{
+			ansicode_printf(&titlecolor, "\nGenerated C code:\n\n");
+			puts(code.data);
+		}
 
 		//Cleanup
 		erw_scope_dtor(scope);

@@ -15,6 +15,7 @@ static void erw_checkboolean(
 	log_assert(lastnode, "is NULL");
 	log_assert(lines, "is NULL");
 
+	//TODO: Fix types based on Bool
 	if(strcmp(ret->name, "Bool"))
 	{
 		struct Str msg;
@@ -46,6 +47,7 @@ static void erw_checknumerical(
 	log_assert(lastnode, "is NULL");
 	log_assert(lines, "is NULL");
 
+	//TODO: Fix types based on numerical types
 	if(strcmp(ret->name, "Int8") &&
 		strcmp(ret->name, "Int16") &&
 		strcmp(ret->name, "Int32") &&
@@ -506,7 +508,7 @@ static void erw_checkblock(
 				erw_TOKENTYPE_KEYWORD_TYPE)
 			{
 				struct erw_ASTNode* typenode = blocknode->branches[i];
-				erw_scope_addtype(scope, typenode, lines);
+				erw_scope_addtype(scope, typenode, lines, 0);
 			}
 			else if(blocknode->branches[i]->token.type ==
 					erw_TOKENTYPE_KEYWORD_LET || 
@@ -652,7 +654,8 @@ static void erw_checkblock(
 						struct Str msg;
 						str_ctorfmt(
 							&msg,
-							"Function ('%s') should return a %s.",
+							"Function ('%s') should return a value of type "
+								"'%s'.",
 							func->name,
 							func->type
 						);
@@ -758,7 +761,7 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 		{
 			struct Str msg;
 			str_ctor(&msg, "Unused variable");
-			erw_error(
+			erw_warning(
 				msg.data, 
 				lines[var->node->branches[0]->token.linenum - 1].data,
 				var->node->branches[0]->token.linenum, 
@@ -780,7 +783,7 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 			{
 				struct Str msg;
 				str_ctor(&msg, "Unused function");
-				erw_error(
+				erw_warning(
 					msg.data, 
 					lines[func->node->branches[0]->token.linenum - 1].data,
 					func->node->branches[0]->token.linenum, 
@@ -805,7 +808,7 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 			{
 				struct Str msg;
 				str_ctor(&msg, "Unused type");
-				erw_error(
+				erw_warning(
 					msg.data, 
 					lines[type->node->branches[0]->token.linenum - 1].data,
 					type->node->branches[0]->token.linenum, 
@@ -1022,7 +1025,7 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 		token.text = types[i];
 		struct erw_ASTNode* tokennode = erw_ast_newfromtoken(token);
 		erw_ast_addbranch(node, tokennode);
-		erw_scope_addtype(globalscope, node, lines);
+		erw_scope_addtype(globalscope, node, lines, 1);
 
 		//NOTE: Does this work well? seems sketchy
 		erw_ast_dtor(node);
@@ -1039,7 +1042,7 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 		else if(ast->branches[i]->token.type == erw_TOKENTYPE_KEYWORD_TYPE)
 		{
 			struct erw_ASTNode* typenode = ast->branches[i];
-			erw_scope_addtype(globalscope, typenode, lines);
+			erw_scope_addtype(globalscope, typenode, lines, 0);
 		}
 	}
 

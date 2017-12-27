@@ -30,4 +30,12 @@ void erw_error(
 	size_t to
 );
 
+void erw_warning(
+	const char* msg, 
+	const char* line, 
+	size_t linenum, 
+	size_t column, 
+	size_t to
+);
+
 #endif
