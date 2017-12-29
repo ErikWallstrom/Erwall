@@ -24,31 +24,31 @@
 #include "erw_ast.h"
 #include "vec.h"
 
-struct erw_FunctionSymbol
+struct erw_TypeSymbol
 {
+	struct erw_TypeSymbol* type;
 	struct erw_ASTNode* node;
 	const char* name;
-	const char* type;
+	int native;
+	int used;
+};
+
+struct erw_FunctionSymbol
+{
+	struct erw_TypeSymbol* type;
+	struct erw_ASTNode* node;
+	const char* name;
 	int used;
 };
 
 struct erw_VariableSymbol
 {
+	struct erw_TypeSymbol* type;
 	struct erw_ASTNode* node;
 	const char* name;
-	const char* type;
 	int hasvalue;
 	int isconst;
 	int ismut;
-	int used;
-};
-
-struct erw_TypeSymbol
-{
-	struct erw_ASTNode* node;
-	const char* name;
-	const char* type;
-	int native;
 	int used;
 };
 

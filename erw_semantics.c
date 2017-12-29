@@ -15,7 +15,11 @@ static void erw_checkboolean(
 	log_assert(lastnode, "is NULL");
 	log_assert(lines, "is NULL");
 
-	//TODO: Fix types based on Bool
+	while(ret->type) //Get base type
+	{
+		ret = ret->type;
+	}
+
 	if(strcmp(ret->name, "Bool"))
 	{
 		struct Str msg;
@@ -46,8 +50,12 @@ static void erw_checknumerical(
 	log_assert(firstnode, "is NULL");
 	log_assert(lastnode, "is NULL");
 	log_assert(lines, "is NULL");
+ 
+	while(ret->type) //Get base type
+	{
+		ret = ret->type;
+	}
 
-	//TODO: Fix types based on numerical types
 	if(strcmp(ret->name, "Int8") &&
 		strcmp(ret->name, "Int16") &&
 		strcmp(ret->name, "Int32") &&
@@ -657,7 +665,7 @@ static void erw_checkblock(
 							"Function ('%s') should return a value of type "
 								"'%s'.",
 							func->name,
-							func->type
+							func->type->name
 						);
 
 						erw_error(

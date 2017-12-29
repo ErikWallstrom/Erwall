@@ -116,6 +116,6 @@ void erw_warning(
 		{
 			ansicode_fprintf(&markcolor, stderr, "~");
 		}
-		fprintf(stderr, "\n\n");
+		fprintf(stderr, "\n");
 	}
 }

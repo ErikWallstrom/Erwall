@@ -1,6 +1,6 @@
 # Comments
 
-```erwall
+```erw
 # Single line comment
 #[
 	Multi line comment
@@ -12,7 +12,7 @@
 
 # Type declaration
 
-```erwall
+```erw
 type TypeName: Type;
 
 type EntityID: Int64;
@@ -26,31 +26,56 @@ type Player: struct
 
 # Variable declaration
 
-```erwall
-mut name: Type = Type(value);
-let name: Type = Type(value);
+```erw
+mut name: Type = value;
+let name: Type = value;
 
-mut x: Int = Int(sizeof(Float));
-let x: Int = Int(sizeof(Float)); # Immutable
+mut x: Int = sizeof(Float); 
+let x: Int = sizeof(Float); # Immutable
 ```
 
 # Function declaration
 
-```erwall
-func name: (arguments) -> return_type {};
+```erw
+func name: (arguments) -> return_type {}
 
-func print: (text: Char[]) {};
+func print: (let text: Char[]) {}
+func add: (let x: Int32, let y: Int32) -> Int32 {}
 ```
 
 # If statement
 
-```erwall
-if(bool) {} elseif(bool){} else {}
+```erw
+if(bool) {} elseif(bool) {} else {}
 
-if(3 < 10)
-{
-}
-else
-{
-}
+if(3 < 10) {} elseif(3 == 10) {} else {}
 ```
+
+# C function call
+
+```erw
+@c_function();
+@c_variable;
+
+@printf("Hello World");
+let status: Int32 = @SDL_CreateWindow("Hello World");
+let value: Int32 = @c_variable + 4;
+```
+
+# Return statement
+
+```erw
+return;
+return value;
+
+return 12;
+```
+
+# Type casting
+
+```erw
+cast(Type, value);
+
+let x: Int32 = cast(Int32, 3.14);
+```
+

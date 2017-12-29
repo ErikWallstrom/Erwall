@@ -253,7 +253,7 @@ static struct erw_ASTNode* erw_parse_sign(struct erw_Parser* parser)
 	return signnode;
 }
 
-static struct erw_ASTNode*  erw_parse_term(struct  erw_Parser* parser)
+static struct erw_ASTNode* erw_parse_term(struct  erw_Parser* parser)
 { 
 	struct erw_ASTNode* termnode = erw_parse_sign(parser);
 	while(erw_parser_check(parser, erw_TOKENTYPE_OPERATOR_MUL) ||

@@ -1,21 +1,44 @@
-type Int: Int32;
-
-func test: (let x: Int) -> Int
+func test: () -> Int32
 {
-	return cast(Int, cast(Float32, x) + 12.0 + 3.0);
+	type Int: Int32;
+
+	let x: Int = cast(Int, 12);
+	let y: Int = cast(Int, 3);
+
+	return x + y;
 }
 
 func main: () -> Int32
 { 
-	type Lol: Int32;
-	func tata: () -> Lol
+	func print_n_times: (let n: Int32)
 	{
-		let x: Int32 = 12;
-		return cast(Lol, x + 13);
+		@puts("Hello");
+		if(n - 1 > 0) 
+		{
+			print_n_times(n - 1);
+		}
 	}
 
-	let y: Lol = tata();
-	test(cast(Int, 12));
+	func fib: (let n: Int32) -> Int32
+	{
+		if(n == 0)
+		{
+			return 0;
+		}
+		elseif(n == 1 || n == 2)
+		{
+			return 1;
+		}
+		else
+		{
+			return fib(n - 2) + fib(n - 1);
+		}
+	}
+
+	@printf("%i\n", fib(15));
+	print_n_times(3);
+
+	let x: Int32 = 12;
 	return 0;
 }
 

@@ -24,6 +24,56 @@
 #include "log.h"
 #include <stdlib.h>
 
+void compile(struct Str* code, const char* filename)
+{ 
+	log_assert(code, "is NULL");
+	log_assert(filename, "is NULL");
+
+	struct Str cfilename;
+	str_ctorfmt(
+		&cfilename, 
+		"%.*s.c", 
+		(int)(strchr(filename, '.') - filename), 
+		filename
+	);
+
+	struct File cfile;
+	file_ctor(&cfile, cfilename.data, FILEMODE_WRITE);
+	vec_pushwitharr(cfile.content, code->data, code->len);
+	file_dtor(&cfile);
+
+	struct Str command;
+	str_ctorfmt(
+		&command, 
+		"gcc %s -o %.*s -Wall -Wextra -Wshadow -Wstrict-prototypes\\\n"
+			"\t-Wdouble-promotion -Wjump-misses-init -Wnull-dereference\\\n"
+			"\t-Wrestrict -Wlogical-op -Wduplicated-branches "
+			"-Wduplicated-cond\\\n"
+#ifdef NDEBUG
+			"\t-O3 -march=native -mtune=native" //Should this be -O2?
+#else
+			"\t-Og -g3"
+#endif
+			" -lm",
+		cfilename.data,
+		(int)(strchr(filename, '.') - filename), 
+		filename
+	);
+
+	printf("Command: \n\t%s\n\n", command.data);
+
+	int ret = system(command.data);
+	remove(cfilename.data);
+	str_dtor(&command);
+	str_dtor(&cfilename);
+
+	if(ret) //NOTE: This does not seem to work
+	{ 
+		putchar('\n');
+		log_error("C Compilation failed");
+	}
+}
+
 static Vec(struct Str) getlines(const char* source)
 {
 	log_assert(source, "is NULL");
@@ -51,6 +101,12 @@ static void onargerror(void* udata)
 	abort();
 }
 
+static void onerror(void* udata)
+{ 
+	(void)udata;
+	abort();
+}
+
 int main(int argc, char* argv[])
 {
 	struct ArgParserLongOpt options[] = { 
@@ -60,6 +116,7 @@ int main(int argc, char* argv[])
 		{"symtable", "Output the symbol table", 0},
 		{"generate", "Output C code", 0},
 		{"compile", "Compile the C code", 0},
+		{"all", "Enable all options", 0},
 	};
 
 	struct ArgParser argparser;
@@ -72,8 +129,18 @@ int main(int argc, char* argv[])
 		sizeof options / sizeof *options
 	);
 
+	if(argparser.results[6].used)
+	{
+		argparser.results[1].used = 1;
+		argparser.results[2].used = 1;
+		argparser.results[3].used = 1;
+		argparser.results[4].used = 1;
+		argparser.results[5].used = 1;
+	}
+
 	if(argparser.results[0].used)
 	{
+		log_seterrorhandler(onerror, NULL);
 		struct ANSICode titlecolor = {
 			.fg = ANSICODE_FG_GREEN, 
 			.bold = 1, 
@@ -123,6 +190,13 @@ int main(int argc, char* argv[])
 		{
 			ansicode_printf(&titlecolor, "\nGenerated C code:\n\n");
 			puts(code.data);
+		}
+
+		if(argparser.results[5].used)
+		{
+			ansicode_printf(&titlecolor, "Compiler Output:\n\n");
+			compile(&code, argparser.results[0].arg);
+			putchar('\n');
 		}
 
 		//Cleanup

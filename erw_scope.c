@@ -318,7 +318,7 @@ void erw_scope_addvariable(
 	}
 
 	symbol.name = node->branches[0]->token.text;
-	symbol.type = node->branches[1]->token.text;
+	symbol.type = erw_scope_findtype(self, node->branches[1]->token.text);
 	symbol.node = node;
 	symbol.used = 0;
 	vec_pushback(self->variables, symbol);
@@ -396,7 +396,10 @@ void erw_scope_addfunction(
 	symbol.name = node->branches[0]->token.text;
 	if(vec_getsize(node->branches[2]->branches))
 	{
-		symbol.type = node->branches[2]->branches[0]->token.text;
+		symbol.type = erw_scope_findtype(
+			self, 
+			node->branches[2]->branches[0]->token.text
+		);
 	}
 	else
 	{
@@ -448,11 +451,11 @@ void erw_scope_addtype(
 	if(vec_getsize(node->branches) == 2)
 	{
 		erw_scope_gettype(self, &node->branches[1]->token, lines);
-		symbol.type = node->branches[1]->token.text;
+		symbol.type = erw_scope_findtype(self, node->branches[1]->token.text);
 	}
 	else
 	{
-		symbol.type = NULL; //Should this be null or same as name?
+		symbol.type = NULL;
 	}
 
 	symbol.name = node->branches[0]->token.text;
@@ -470,7 +473,7 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 		printf("│");
 	}
 
-	printf("─ Scope Name: [%s]\n", self->funcname);
+	printf("─ Scope Name: [%s]\n", self->funcname); 
 
 	for(size_t i = 0; i < vec_getsize(self->types); i++)
 	{
@@ -479,7 +482,12 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 			printf("    ");
 			printf("│");
 		}
-		printf("─ Type: %s (%s)\n", self->types[i].name, self->types[i].type);
+
+		printf(
+			"─ Type: %s (%s)\n", 
+			self->types[i].name, 
+			self->types[i].type ? self->types[i].type->name : "null"
+		);
 	}
 
 	for(size_t i = 0; i < vec_getsize(self->functions); i++)
@@ -489,7 +497,12 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 			printf("    ");
 			printf("│");
 		}
-		printf("─ Function: %s (%s)\n", self->functions[i].name, self->functions[i].type);
+
+		printf(
+			"─ Function: %s (%s)\n", 
+			self->functions[i].name, 
+			self->functions[i].type ? self->functions[i].type->name : "null"
+		);
 	}
 
 	for(size_t i = 0; i < vec_getsize(self->variables); i++)
@@ -499,7 +512,12 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 			printf("    ");
 			printf("│");
 		}
-		printf("─ Variable: %s (%s)\n", self->variables[i].name, self->variables[i].type);
+
+		printf(
+			"─ Variable: %s (%s)\n", 
+			self->variables[i].name, 
+			self->variables[i].type ? self->variables[i].type->name : "null"
+		);
 	}
 
 	for(size_t i = 0; i < vec_getsize(self->children); i++)

@@ -43,8 +43,11 @@
 * Nested comments ✔
 * Nested functions ✔
 * Compatible with C ✔
+* Real constant variables ✔
 * Readable generated C code ✔
 * Strict types (no implicit int to float or enum to int conversions) ✔
+* No undefined behavior
+* Code that compiles should be safe
 * Arrays as first-class citizens
 * Size of arrays known
 * Compile time bounds checking (zero cost)
@@ -57,7 +60,7 @@
 * Literal heavy (why declare variables when what you really want are values?) (?)
 * Default values for structs (?)
 * Switch working for all types (?)
-* Const by default (?) ✔
+* Const by default (?) 
 * Forced type naming conventions, i.e starting with capital letter (?) ✔
 * Resizable arrays (?)
 * Type inference (?)

@@ -33,6 +33,11 @@ static struct Str erw_generatefunccall(
 	struct erw_Scope* scope
 );
 
+static struct Str erw_generatetype(
+	struct erw_ASTNode* typenode, 
+	struct erw_Scope* scope
+);
+
 static struct Str erw_generateexpr(
 	struct erw_ASTNode* exprnode,
 	struct erw_Scope* scope)
@@ -52,12 +57,12 @@ static struct Str erw_generateexpr(
 			}
 			else if(exprnode->token.type == erw_TOKENTYPE_KEYWORD_CAST)
 			{
-				str_appendfmt(
-					&code, 
-					"(" ERW_PREFIX "_%s)(", 
-					exprnode->branches[0]->token.text
+				struct Str type = erw_generatetype(
+					exprnode->branches[0],
+					scope
 				);
 
+				str_appendfmt(&code, "(%s)(", type.data);
 				struct Str expr = erw_generateexpr(
 					exprnode->branches[1], 
 					scope
@@ -125,9 +130,9 @@ static struct Str erw_generateexpr(
 			}
 			else if(exprnode->token.type == erw_TOKENTYPE_IDENT)
 			{ 
-				//log_info("!!! TYPE: %s");
 				str_appendfmt(&code, ERW_PREFIX "_%s", exprnode->token.text);
 			}
+			//TODO: Fix correct generation of different numerical types
 			/*
 			else if(exprnode->token.type == TOKENTYPE_LITERAL_INT)
 			{ 
@@ -245,7 +250,6 @@ static struct Str erw_generatefunccall(
 	}
 
 	str_append(&code, ")");
-	printf("Func call: %s\n", code.data);
 	return code;
 }
 
@@ -255,11 +259,6 @@ static struct Str erw_generatefuncprot(
 );
 
 static struct Str erw_generatetypedeclr(
-	struct erw_ASTNode* typenode, 
-	struct erw_Scope* scope
-);
-
-static struct Str erw_generatetype(
 	struct erw_ASTNode* typenode, 
 	struct erw_Scope* scope
 );
@@ -276,6 +275,7 @@ static struct erw_BlockResult erw_generateblock(
 	struct erw_BlockResult result;
 	str_ctor(&result.blockcode, "");
 	str_ctor(&result.header, "");
+	size_t scopecounter = 0;
 
 	for(size_t i = 0; i < indentlvl; i++)
 	{ 
@@ -300,27 +300,18 @@ static struct erw_BlockResult erw_generateblock(
 					blockscope
 				);
 
-				size_t funcindex = 0;
-				for(size_t j = 0; j < vec_getsize(blockscope->children); j++)
-				{
-					if(!strcmp(
-						blockscope->children[j]->funcname, 
-						funcnode->branches[0]->token.text))
-					{
-						funcindex = j;
-						break;
-					}
-				}
-
 				struct erw_ASTNode* newblock = funcnode->branches[3];
 				struct erw_BlockResult newresult = erw_generateblock(
 					newblock, 
-					blockscope->children[funcindex], 
+					blockscope->children[scopecounter], 
 					0
 				);
-				str_appendfmt(&result.header, "%s", newresult.header.data);
+
+				str_append(&result.header, newresult.header.data);
 				str_appendfmt(&result.header, "%s\n", funcprot.data);
-				str_appendfmt(&result.header, "%s", newresult.blockcode.data);
+				str_append(&result.header, newresult.blockcode.data);
+				str_append(&result.header, "\n");;
+				scopecounter++;
 			}
 			else if(blocknode->branches[i]->token.type == 
 				erw_TOKENTYPE_KEYWORD_TYPE)
@@ -330,7 +321,7 @@ static struct erw_BlockResult erw_generateblock(
 					typenode, 
 					blockscope
 				);
-				str_appendfmt(&result.header, "%s\n", typecode.data);
+				str_append(&result.header, typecode.data);
 			}
 			else if(blocknode->branches[i]->token.type == 
 				erw_TOKENTYPE_KEYWORD_LET || 
@@ -379,7 +370,7 @@ static struct erw_BlockResult erw_generateblock(
 			else if(blocknode->branches[i]->token.type == 
 				erw_TOKENTYPE_KEYWORD_IF)
 			{
-				/*
+				//TODO: Fix header generation
 				struct erw_ASTNode* ifnode = blocknode->branches[i];
 				str_append(&result.blockcode, "\tif(");
 				struct Str expr = erw_generateexpr(
@@ -387,46 +378,78 @@ static struct erw_BlockResult erw_generateblock(
 					blockscope
 				);
 				str_appendfmt(&result.blockcode, "%s)\n", expr.data);
-				struct erw_BlockResult result = erw_generateblock(
+
+				struct erw_BlockResult newblock = erw_generateblock(
 					ifnode->branches[1], 
-					blockscope, //XXX: Wrong scope, NEEDS FIX **************
+					blockscope->children[scopecounter], 
 					indentlvl + 1
 				);
 
+				str_append(&result.blockcode, newblock.blockcode.data);
 				for(size_t j = 2; j < vec_getsize(ifnode->branches); j++)
 				{ 
+					scopecounter++;
 					if(ifnode->branches[j]->token.type == 
-						TOKENTYPE_KEYWORD_ELSEIF)
+						erw_TOKENTYPE_KEYWORD_ELSEIF)
 					{ 
-						str_append(ccode, "\telse if(");
-						generateexpr(
-							ccode, 
+						str_append(&result.blockcode, "\telse if(");
+						struct Str newexpr = erw_generateexpr(
 							ifnode->branches[j]->branches[0], 
-							funcname
+							blockscope
 						);
-						str_append(ccode, ")\n");
-						generateblock(
-							ccode, 
+
+						str_append(&result.blockcode, newexpr.data);
+						str_append(&result.blockcode, ")\n");
+
+						struct erw_BlockResult block = erw_generateblock(
 							ifnode->branches[j]->branches[1], 
-							funcpos, 
-							funcname,
+							blockscope->children[scopecounter], 
 							indentlvl + 1
 						);
+						str_append(&result.blockcode, block.blockcode.data);
 					}
 					else //else statement
 					{ 
-						str_append(ccode, "\telse\n");
-						generateblock(
-							ccode, 
+						str_append(&result.blockcode, "\telse\n");
+						struct erw_BlockResult block = erw_generateblock(
 							ifnode->branches[j]->branches[0], 
-							funcpos, 
-							funcname,
+							blockscope->children[scopecounter], 
 							indentlvl + 1
 						);
+						str_append(&result.blockcode, block.blockcode.data);
 					}
 				}
-				str_append(ccode, "\n");
-				*/
+				//str_append(&result.blockcode, "\n");
+			}
+			else if(blocknode->branches[i]->token.type == erw_TOKENTYPE_FOREIGN)
+			{
+				struct erw_ASTNode* foreignnode = blocknode->branches[i];
+				str_appendfmt(
+					&result.blockcode, 
+					"\t%s(", 
+					foreignnode->token.text
+				);
+
+				int first = 1;
+				for(size_t j = 0; 
+					j < vec_getsize(foreignnode->branches[0]->branches); 
+					j++)
+				{ 
+					if(!first)
+					{ 
+						str_append(&result.blockcode, ", ");
+					}
+
+					struct Str expr = erw_generateexpr(
+						foreignnode->branches[0]->branches[j],
+						blockscope
+					);
+
+					str_append(&result.blockcode, expr.data);
+					first = 0;
+				}
+
+				str_append(&result.blockcode, ");\n");
 			}
 		}
 		else
@@ -522,13 +545,18 @@ static struct Str erw_generatefuncprot(
 		struct Str type = erw_generatetype(retnode->branches[0], scope);
 		str_prependfmt(
 			&code, 
-			"\n%s ", 
+			"%s ", 
 			type.data
 		);
 	}
 	else
 	{
-		str_prepend(&code, "\nvoid ");
+		str_prepend(&code, "void ");
+	}
+
+	if(local)
+	{
+		str_prepend(&code, "static ");
 	}
 
 	str_append(&code, "("); 
@@ -644,19 +672,19 @@ static struct Str erw_generatetypedeclr(
 	struct Str code;
 	if(vec_getsize(typenode->branches) == 1)
 	{ 
-		str_ctor(&code, "\ntypedef struct {char _;} ");
+		str_ctor(&code, "typedef struct {char _;} ");
 		struct Str type = erw_generatetype(typenode->branches[0], scope);
 		str_append(&code, type.data);
-		str_append(&code, ";");
+		str_append(&code, ";\n");
 	}
 	else
 	{ 
-		str_ctor(&code, "\ntypedef ");
+		str_ctor(&code, "typedef ");
 		struct Str type1 = erw_generatetype(typenode->branches[0], scope);
 		struct Str type2 = erw_generatetype(typenode->branches[1], scope);
 
 		str_appendfmt(&code, "%s ", type2.data);
-		str_appendfmt(&code, "%s;", type1.data);
+		str_appendfmt(&code, "%s;\n", type1.data);
 	}
 
 	return code;
@@ -686,11 +714,11 @@ struct Str erw_generate(struct erw_ASTNode* ast, struct erw_Scope* scope)
 		"typedef double\t\t"  ERW_PREFIX "_Float64;\n" //XXX: Not portable
 		"typedef _Bool\t\t"   ERW_PREFIX "_Bool;\n\n"
 
-		"enum {" ERW_PREFIX "_false, " ERW_PREFIX "_true};\n"
+		"enum {" ERW_PREFIX "_false, " ERW_PREFIX "_true};\n\n"
 	};
 
 	const char footer[] = { 
-		"\nint main(int argc, char* argv[])\n"
+		"int main(int argc, char* argv[])\n"
 		"{\n"
 		"\treturn " ERW_PREFIX "_main();\n"
 		"}\n\n"
@@ -740,6 +768,7 @@ struct Str erw_generate(struct erw_ASTNode* ast, struct erw_Scope* scope)
 		str_append(&code, result.header.data);
 		str_appendfmt(&code, "%s\n", funcprot.data);
 		str_append(&code, result.blockcode.data);
+		str_append(&code, "\n");;
 		str_dtor(&funcprot);
 	}
 
