@@ -500,11 +500,22 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 			printf("│");
 		}
 
-		printf(
-			"─ Type: %s (%s)\n", 
-			self->types[i].name, 
-			self->types[i].type ? self->types[i].type->name : "null"
-		);
+		if(self->types[i].native)
+		{
+			printf("─ Type: %s (native)\n", self->types[i].name);
+		}
+		else if(self->types[i].type)
+		{
+			printf(
+				"─ Type: %s (%s)\n", 
+				self->types[i].name, 
+				self->types[i].type ? self->types[i].type->name : "null"
+			);
+		}
+		else
+		{
+			printf("─ Type: %s\n", self->types[i].name);
+		}
 	}
 
 	for(size_t i = 0; i < vec_getsize(self->functions); i++)

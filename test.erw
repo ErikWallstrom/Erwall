@@ -1,44 +1,7 @@
 func main: () -> Int32
 {
-	if(true)
-	{
-		if(true)
-		{
-
-		}
-		else
-		{
-
-		}
-
-		func test: ()
-		{
-
-		}
-
-		type T: Int32;
-		let x: Int32 = 13;
-	}
-	else
-	{
-		if(true)
-		{
-
-		}
-		else
-		{
-
-		}
-
-		func test: ()
-		{
-
-		}
-
-		type T: Int32;
-		let x: Int32 = 13;
-	}
-
+	let x: Int32 = 3^2;
+	@printf("%i\n", x);
 	return 0;
 }
 
