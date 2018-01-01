@@ -290,11 +290,7 @@ static struct erw_TypeSymbol* erw_getexprtype(
 				}
 
 				var->used = 1;
-				ret = erw_scope_gettype(
-					scope, 
-					&var->node->branches[1]->token, 
-					lines
-				);
+				ret = var->type;
 			}
 			else
 			{
@@ -573,7 +569,9 @@ static void erw_checkblock(
 
 				struct erw_Scope* newscope = erw_scope_new(
 					scope, 
-					scope->funcname
+					scope->funcname,
+					vec_getsize(scope->children),
+					0
 				);
 
 				erw_checkblock(newscope, ifblock, lines);
@@ -616,7 +614,9 @@ static void erw_checkblock(
 
 						newscope = erw_scope_new(
 							scope, 
-							scope->funcname
+							scope->funcname,
+							vec_getsize(scope->children),
+							0
 						);
 						erw_checkblock(newscope, elseifblock, lines);
 					}
@@ -627,9 +627,10 @@ static void erw_checkblock(
 
 						newscope = erw_scope_new(
 							scope, 
-							scope->funcname
+							scope->funcname,
+							vec_getsize(scope->children),
+							0
 						);
-						erw_checkblock(newscope, elseblock, lines);
 						erw_checkblock(newscope, elseblock, lines);
 					}
 				}
@@ -744,7 +745,9 @@ static void erw_checkfunc(
 	erw_scope_addfunction(scope, funcnode, lines);
 	struct erw_Scope* newscope = erw_scope_new(
 		scope, 
-		funcnode->branches[0]->token.text
+		funcnode->branches[0]->token.text,
+		vec_getsize(scope->children),
+		1
 	);
 
 	struct erw_ASTNode* argsnode = funcnode->branches[1];
@@ -807,25 +810,19 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 	for(size_t i = 0; i < vec_getsize(scope->types); i++)
 	{
 		struct erw_TypeSymbol* type = &scope->types[i];
-		if(type->type)
-			/* XXX: Does not check for unused for empty types 
-				(to make built-in types not crash the program)
-			*/
+		if(!type->used && !type->native)
 		{
-			if(!type->used)
-			{
-				struct Str msg;
-				str_ctor(&msg, "Unused type");
-				erw_warning(
-					msg.data, 
-					lines[type->node->branches[0]->token.linenum - 1].data,
-					type->node->branches[0]->token.linenum, 
-					type->node->branches[0]->token.column,
-					type->node->branches[0]->token.column +
-						vec_getsize(type->node->branches[0]->token.text) - 2
-				);
-				str_dtor(&msg);
-			}
+			struct Str msg;
+			str_ctor(&msg, "Unused type");
+			erw_warning(
+				msg.data,
+				lines[type->node->branches[0]->token.linenum - 1].data,
+				type->node->branches[0]->token.linenum,
+				type->node->branches[0]->token.column,
+				type->node->branches[0]->token.column +
+					vec_getsize(type->node->branches[0]->token.text) - 2
+			);
+			str_dtor(&msg);
 		}
 	}
 
@@ -1002,7 +999,8 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 	log_assert(ast, "is NULL");
 	log_assert(lines, "is NULL");
 
-	struct erw_Scope* globalscope = erw_scope_new(NULL, NULL);
+	//NOTE: Line below is temporary named NULL
+	struct erw_Scope* globalscope = erw_scope_new(NULL, NULL, 0, 1); 
 	//XXX: Ugly native types implementation
 	char* types[] = { 
 		"Char",

@@ -112,6 +112,8 @@ const struct erw_TokenType* const erw_TOKENTYPE_END =
 	&(struct erw_TokenType){"End (';')"};
 const struct erw_TokenType* const erw_TOKENTYPE_COMMA = 
 	&(struct erw_TokenType){"Comma"};
+const struct erw_TokenType* const erw_TOKENTYPE_DOT = 
+	&(struct erw_TokenType){"Dot"};
 const struct erw_TokenType* const erw_TOKENTYPE_LPAREN = 
 	&(struct erw_TokenType){"Left Parenthesis"};
 const struct erw_TokenType* const erw_TOKENTYPE_RPAREN = 
@@ -368,6 +370,10 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 
 			case ',':
 				token.type = erw_TOKENTYPE_COMMA;
+				break;
+
+			case '.':
+				token.type = erw_TOKENTYPE_DOT;
 				break;
 
 			case '+':

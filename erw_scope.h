@@ -60,9 +60,17 @@ struct erw_Scope
 	Vec(struct erw_Scope*) children;
 	struct erw_Scope* parent;
 	const char* funcname;
+	size_t index;
+	int isfunction;
 };
 
-struct erw_Scope* erw_scope_new(struct erw_Scope* parent, const char* funcname);
+struct erw_Scope* erw_scope_new(
+	struct erw_Scope* parent, 
+	const char* funcname, 
+	size_t index,
+	int isfunction
+);
+
 struct erw_VariableSymbol* erw_scope_getvariable(
 	struct erw_Scope* self, 
 	struct erw_Token* token,

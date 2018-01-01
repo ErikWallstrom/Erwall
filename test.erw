@@ -1,44 +1,44 @@
-func test: () -> Int32
-{
-	type Int: Int32;
-
-	let x: Int = cast(Int, 12);
-	let y: Int = cast(Int, 3);
-
-	return x + y;
-}
-
 func main: () -> Int32
-{ 
-	func print_n_times: (let n: Int32)
+{
+	if(true)
 	{
-		@puts("Hello");
-		if(n - 1 > 0) 
+		if(true)
 		{
-			print_n_times(n - 1);
-		}
-	}
 
-	func fib: (let n: Int32) -> Int32
-	{
-		if(n == 0)
-		{
-			return 0;
-		}
-		elseif(n == 1 || n == 2)
-		{
-			return 1;
 		}
 		else
 		{
-			return fib(n - 2) + fib(n - 1);
+
 		}
+
+		func test: ()
+		{
+
+		}
+
+		type T: Int32;
+		let x: Int32 = 13;
+	}
+	else
+	{
+		if(true)
+		{
+
+		}
+		else
+		{
+
+		}
+
+		func test: ()
+		{
+
+		}
+
+		type T: Int32;
+		let x: Int32 = 13;
 	}
 
-	@printf("%i\n", fib(15));
-	print_n_times(3);
-
-	let x: Int32 = 12;
 	return 0;
 }
 

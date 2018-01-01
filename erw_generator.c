@@ -208,15 +208,21 @@ static struct Str erw_generatefunccall(
 
 		if(found)
 		{
-			if(tempscope->funcname) //NOTE: Too tired to judge this line
+			if(tempscope->isfunction)
 			{
-				if(strcmp(lastname, tempscope->funcname))
+				if(tempscope->funcname)
 				{
-					str_prependfmt(&code, "%s_", tempscope->funcname);
+					if(strcmp(lastname, tempscope->funcname))
+					{
+						str_prependfmt(&code, "%s_", tempscope->funcname);
+						lastname = tempscope->funcname;
+					}
 				}
 			}
-
-			lastname = tempscope->funcname;
+			else
+			{
+				str_prependfmt(&code, "%zu_", tempscope->index);
+			}
 		}
 
 		tempscope = tempscope->parent;
@@ -370,7 +376,6 @@ static struct erw_BlockResult erw_generateblock(
 			else if(blocknode->branches[i]->token.type == 
 				erw_TOKENTYPE_KEYWORD_IF)
 			{
-				//TODO: Fix header generation
 				struct erw_ASTNode* ifnode = blocknode->branches[i];
 				str_append(&result.blockcode, "\tif(");
 				struct Str expr = erw_generateexpr(
@@ -386,6 +391,7 @@ static struct erw_BlockResult erw_generateblock(
 				);
 
 				str_append(&result.blockcode, newblock.blockcode.data);
+				str_append(&result.header, newblock.header.data);
 				for(size_t j = 2; j < vec_getsize(ifnode->branches); j++)
 				{ 
 					scopecounter++;
@@ -407,6 +413,7 @@ static struct erw_BlockResult erw_generateblock(
 							indentlvl + 1
 						);
 						str_append(&result.blockcode, block.blockcode.data);
+						str_append(&result.header, block.header.data);
 					}
 					else //else statement
 					{ 
@@ -417,6 +424,7 @@ static struct erw_BlockResult erw_generateblock(
 							indentlvl + 1
 						);
 						str_append(&result.blockcode, block.blockcode.data);
+						str_append(&result.header, block.header.data);
 					}
 				}
 				//str_append(&result.blockcode, "\n");
@@ -517,15 +525,21 @@ static struct Str erw_generatefuncprot(
 
 		if(found)
 		{
-			if(tempscope->funcname) //NOTE: Too tired to judge this line
+			if(tempscope->isfunction)
 			{
-				if(strcmp(lastname, tempscope->funcname))
+				if(tempscope->funcname)
 				{
-					str_prependfmt(&code, "%s_", tempscope->funcname);
+					if(strcmp(lastname, tempscope->funcname))
+					{
+						str_prependfmt(&code, "%s_", tempscope->funcname);
+						lastname = tempscope->funcname;
+					}
 				}
 			}
-
-			lastname = tempscope->funcname;
+			else
+			{
+				str_prependfmt(&code, "%zu_", tempscope->index);
+			}
 		}
 
 		tempscope = tempscope->parent;
@@ -636,15 +650,21 @@ static struct Str erw_generatetype(
 
 		if(found)
 		{
-			if(tempscope->funcname) //NOTE: Too tired to judge this line
+			if(tempscope->isfunction)
 			{
-				if(strcmp(lastname, tempscope->funcname))
+				if(tempscope->funcname)
 				{
-					str_prependfmt(&code, "%s_", tempscope->funcname);
+					if(strcmp(lastname, tempscope->funcname))
+					{
+						str_prependfmt(&code, "%s_", tempscope->funcname);
+						lastname = tempscope->funcname;
+					}
 				}
 			}
-
-			lastname = tempscope->funcname;
+			else
+			{
+				str_prependfmt(&code, "%zu_", tempscope->index);
+			}
 		}
 
 		tempscope = tempscope->parent;

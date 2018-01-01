@@ -72,6 +72,7 @@ extern const struct erw_TokenType* const erw_TOKENTYPE_IDENT;
 extern const struct erw_TokenType* const erw_TOKENTYPE_TYPE;
 extern const struct erw_TokenType* const erw_TOKENTYPE_END;
 extern const struct erw_TokenType* const erw_TOKENTYPE_COMMA;
+extern const struct erw_TokenType* const erw_TOKENTYPE_DOT;
 extern const struct erw_TokenType* const erw_TOKENTYPE_LPAREN;
 extern const struct erw_TokenType* const erw_TOKENTYPE_RPAREN;
 extern const struct erw_TokenType* const erw_TOKENTYPE_LCURLY;

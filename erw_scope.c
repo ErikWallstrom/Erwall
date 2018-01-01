@@ -107,7 +107,11 @@ static struct erw_TypeSymbol* erw_scope_findtype(
 	return NULL;
 }
 
-struct erw_Scope* erw_scope_new(struct erw_Scope* parent, const char* funcname)
+struct erw_Scope* erw_scope_new(
+	struct erw_Scope* parent, 
+	const char* funcname, 
+	size_t index,
+	int isfunction)
 {
 	struct erw_Scope* self = malloc(sizeof(struct erw_Scope));
 	if(!self)
@@ -119,8 +123,10 @@ struct erw_Scope* erw_scope_new(struct erw_Scope* parent, const char* funcname)
 	self->variables = vec_ctor(struct erw_VariableSymbol, 0);
 	self->types = vec_ctor(struct erw_TypeSymbol, 0);
 	self->children = vec_ctor(struct erw_Scope*, 0);
-	self->funcname = funcname;
 	self->parent = parent;
+	self->isfunction = isfunction;
+	self->index = index;
+	self->funcname = funcname;
 
 	if(parent)
 	{
@@ -473,7 +479,18 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 		printf("│");
 	}
 
-	printf("─ Scope Name: [%s]\n", self->funcname); 
+	if(self->isfunction)
+	{
+		printf(
+			"─ Scope [%zu]: Function [%s]\n", 
+			self->index, 
+			self->funcname ?  self->funcname : "null"
+		); 
+	}
+	else
+	{
+		printf("─ Scope [%zu]: \n", self->index);
+	}
 
 	for(size_t i = 0; i < vec_getsize(self->types); i++)
 	{
