@@ -79,3 +79,10 @@ cast(Type, value);
 let x: Int32 = cast(Int32, 3.14);
 ```
 
+# Defer
+
+```erw
+defer {}
+
+defer {@puts("Hello World");}
+```

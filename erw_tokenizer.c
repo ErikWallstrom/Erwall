@@ -42,6 +42,8 @@ const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ELSE =
 	&(struct erw_TokenType){"Keyword 'else'"};
 const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_CAST = 
 	&(struct erw_TokenType){"Keyword 'cast'"};
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_DEFER = 
+	&(struct erw_TokenType){"Keyword 'defer'"};
 const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DECLR = 
 	&(struct erw_TokenType){"Operator 'Declaration'"};
 const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ADD = 
@@ -316,6 +318,11 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				!memcmp("cast", token.text, sizeof("cast") - 1))
 			{
 				token.type = erw_TOKENTYPE_KEYWORD_CAST;
+			}
+			else if(sizeof("defer") - 1 == vec_getsize(token.text) &&
+				!memcmp("defer", token.text, sizeof("defer") - 1))
+			{
+				token.type = erw_TOKENTYPE_KEYWORD_DEFER;
 			}
 			else if(sizeof("true") - 1 == vec_getsize(token.text) &&
 				!memcmp("true", token.text, sizeof("true") - 1))

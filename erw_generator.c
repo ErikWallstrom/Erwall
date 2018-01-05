@@ -376,6 +376,32 @@ static struct erw_BlockResult erw_generateblock(
 			else if(blocknode->branches[i]->token.type == 
 				erw_TOKENTYPE_KEYWORD_RETURN)
 			{
+				str_append(&result.blockcode, "\n");
+				struct erw_Scope* tempscope = blockscope;
+				while(tempscope)
+				{
+					size_t numfinalizers = vec_getsize(tempscope->finalizers);
+					for(size_t j = numfinalizers - 1; j < numfinalizers; j++)
+					{
+						struct erw_BlockResult block = erw_generateblock(
+							tempscope->finalizers[j].node, 
+							tempscope->children[tempscope->finalizers[j].index],
+							indentlvl + 1
+						);
+
+						str_append(&result.blockcode, block.blockcode.data);
+						str_append(&result.header, block.header.data);
+						str_append(&result.blockcode, "\n");
+					}
+
+					tempscope = tempscope->parent;
+				}
+
+				for(size_t j = 0; j < indentlvl + 1; j++)
+				{ 
+					str_append(&result.blockcode, "\t");
+				}
+
 				str_append(&result.blockcode, "return");
 				if(vec_getsize(blocknode->branches[i]->branches))
 				{
@@ -483,6 +509,12 @@ static struct erw_BlockResult erw_generateblock(
 
 				str_append(&result.blockcode, ");\n");
 			}
+			else if(blocknode->branches[i]->token.type == 
+				erw_TOKENTYPE_KEYWORD_DEFER)
+			{
+				str_append(&result.blockcode, "\n");
+				scopecounter++;
+			}
 		}
 		else
 		{
@@ -494,6 +526,24 @@ static struct erw_BlockResult erw_generateblock(
 				);
 				str_appendfmt(&result.blockcode, "%s;\n", funccall.data);
 			}
+		}
+	}
+
+	size_t lastindex = vec_getsize(blocknode->branches) - 1;
+	if(!blocknode->branches[lastindex]->istoken || 
+		blocknode->branches[lastindex]->token.type !=
+			erw_TOKENTYPE_KEYWORD_RETURN)
+	{
+		size_t numfinalizers = vec_getsize(blockscope->finalizers);
+		for(size_t i = numfinalizers - 1; i < numfinalizers; i++)
+		{
+			struct erw_BlockResult block = erw_generateblock(
+				blockscope->finalizers[i].node, 
+				blockscope->children[blockscope->finalizers[i].index],
+				indentlvl + 1
+			);
+			str_append(&result.blockcode, block.blockcode.data);
+			str_append(&result.header, block.header.data);
 		}
 	}
 

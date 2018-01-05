@@ -720,6 +720,29 @@ static void erw_checkblock(
 					erw_getexprtype(scope, argsnode->branches[j], lines);
 				}
 			}
+			else if(blocknode->branches[i]->token.type == 
+				erw_TOKENTYPE_KEYWORD_DEFER)
+			{
+				struct erw_ASTNode* defernode = blocknode->branches[i];
+				struct erw_ASTNode* node = defernode->branches[0];
+
+				vec_pushback(
+					scope->finalizers,
+					(struct erw_Finalizer){
+						.node = node,
+						.index = vec_getsize(scope->children)
+					}
+				);
+
+				struct erw_Scope* newscope = erw_scope_new(
+					scope, 
+					scope->funcname,
+					vec_getsize(scope->children),
+					0
+				);
+
+				erw_checkblock(newscope, node, lines);
+			}
 		}
 		else
 		{ 

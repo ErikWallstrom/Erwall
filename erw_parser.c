@@ -506,6 +506,16 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 			erw_ast_addbranch(blocknode, ifnode);
 			continue; //Don't require semicolon
 		}
+		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_DEFER))
+		{
+			struct erw_ASTNode* defernode = erw_ast_newfromtoken(
+				erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_DEFER)
+			);
+
+			erw_ast_addbranch(defernode, erw_parse_block(parser));
+			erw_ast_addbranch(blocknode, defernode);
+			continue; //Don't require semicolon
+		}
 		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_RETURN))
 		{ 
 			struct erw_ASTNode* retnode = erw_ast_newfromtoken(

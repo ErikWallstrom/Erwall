@@ -46,21 +46,21 @@
 * Real constant variables ✔
 * Readable generated C code ✔
 * Strict types (no implicit int to float or enum to int conversions) ✔
-* No undefined behavior
-* Code that compiles should be safe
+* Defer (like Go) ✔
+* No undefined behavior ✔
+* Code that compiles should be safe ✔
 * Arrays as first-class citizens
 * Size of arrays known
 * Compile time bounds checking (zero cost)
 * Tagged unions by default
 * References (non-null pointers)
-* Defer (like Go)
 * Anonymous struct in structs (like Go)
 * Compile time execution and loading of strings
 
 * Literal heavy (why declare variables when what you really want are values?) (?)
 * Default values for structs (?)
 * Switch working for all types (?)
-* Const by default (?) 
+* Const by default (?) ✔
 * Forced type naming conventions, i.e starting with capital letter (?) ✔
 * Resizable arrays (?)
 * Type inference (?)

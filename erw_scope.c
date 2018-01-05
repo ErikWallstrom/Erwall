@@ -123,6 +123,7 @@ struct erw_Scope* erw_scope_new(
 	self->variables = vec_ctor(struct erw_VariableSymbol, 0);
 	self->types = vec_ctor(struct erw_TypeSymbol, 0);
 	self->children = vec_ctor(struct erw_Scope*, 0);
+	self->finalizers = vec_ctor(struct erw_Finalizer, 0);
 	self->parent = parent;
 	self->isfunction = isfunction;
 	self->index = index;

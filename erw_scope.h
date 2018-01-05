@@ -52,12 +52,19 @@ struct erw_VariableSymbol
 	int used;
 };
 
+struct erw_Finalizer //Is this really a good name?
+{
+	struct erw_ASTNode* node;
+	size_t index;
+};
+
 struct erw_Scope
 {
 	Vec(struct erw_FunctionSymbol) functions;
 	Vec(struct erw_VariableSymbol) variables;
 	Vec(struct erw_TypeSymbol) types;
 	Vec(struct erw_Scope*) children;
+	Vec(struct erw_Finalizer) finalizers;
 	struct erw_Scope* parent;
 	const char* funcname;
 	size_t index;
