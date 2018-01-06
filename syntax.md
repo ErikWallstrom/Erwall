@@ -79,10 +79,32 @@ cast(Type, value);
 let x: Int32 = cast(Int32, 3.14);
 ```
 
-# Defer
+# Defer statement
 
 ```erw
 defer {}
 
 defer {@puts("Hello World");}
+```
+
+# While statement
+
+```erw
+while(bool) {}
+
+while(true) {do_something();}
+```
+
+# Assignment
+
+```erw
+name = value;
+name += value;
+name -= value;
+name *= value;
+name /= value;
+name ^= value;
+name %= value;
+
+x = 12;
 ```

@@ -8,7 +8,7 @@ if exists("b:current_syntax")
 endif
 
 syn keyword Todo TODO FIXME NOTE XXX
-syn keyword Keyword func let mut if elseif else return type cast
+syn keyword Keyword func let mut if elseif else return type cast while
 syn match Type "\u[[:alnum:]_]\+"
 syn match Variable "\l[[:alnum:]_]\+"
 syn match Number "\d\+"

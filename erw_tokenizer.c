@@ -44,6 +44,8 @@ const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_CAST =
 	&(struct erw_TokenType){"Keyword 'cast'"};
 const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_DEFER = 
 	&(struct erw_TokenType){"Keyword 'defer'"};
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_WHILE = 
+	&(struct erw_TokenType){"Keyword 'while'"};
 const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DECLR = 
 	&(struct erw_TokenType){"Operator 'Declaration'"};
 const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ADD = 
@@ -323,6 +325,11 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				!memcmp("defer", token.text, sizeof("defer") - 1))
 			{
 				token.type = erw_TOKENTYPE_KEYWORD_DEFER;
+			}
+			else if(sizeof("while") - 1 == vec_getsize(token.text) &&
+				!memcmp("while", token.text, sizeof("while") - 1))
+			{
+				token.type = erw_TOKENTYPE_KEYWORD_WHILE;
 			}
 			else if(sizeof("true") - 1 == vec_getsize(token.text) &&
 				!memcmp("true", token.text, sizeof("true") - 1))

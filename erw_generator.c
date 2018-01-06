@@ -515,6 +515,52 @@ static struct erw_BlockResult erw_generateblock(
 				str_append(&result.blockcode, "\n");
 				scopecounter++;
 			}
+			else if(blocknode->branches[i]->token.type == 
+				erw_TOKENTYPE_KEYWORD_WHILE)
+			{
+				struct erw_ASTNode* whilenode = blocknode->branches[i];
+				str_append(&result.blockcode, "while(");
+				struct Str expr = erw_generateexpr(
+					whilenode->branches[0], 
+					blockscope
+				);
+				str_appendfmt(&result.blockcode, "%s)\n", expr.data);
+
+				struct erw_BlockResult newblock = erw_generateblock(
+					whilenode->branches[1], 
+					blockscope->children[scopecounter], 
+					indentlvl + 1
+				);
+
+				str_append(&result.blockcode, newblock.blockcode.data);
+				str_append(&result.header, newblock.header.data);
+			}
+			else if(blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_ASSIGN ||
+				blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_ADDASSIGN ||
+				blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_SUBASSIGN ||
+				blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_MULASSIGN ||
+				blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_DIVASSIGN ||
+				blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_POWASSIGN ||
+				blocknode->branches[i]->token.type ==
+					erw_TOKENTYPE_OPERATOR_MODASSIGN)
+			{
+				struct erw_ASTNode* assignnode = blocknode->branches[i];
+				struct erw_ASTNode* identnode = assignnode->branches[0];
+				struct erw_ASTNode* exprnode = assignnode->branches[1];
+				str_appendfmt(
+					&result.blockcode, 
+					ERW_PREFIX "_%s %s %s;\n",
+					identnode->token.text,
+					assignnode->token.text,
+					erw_generateexpr(exprnode, blockscope).data
+				);
+			}
 		}
 		else
 		{

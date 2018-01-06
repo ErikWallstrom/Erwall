@@ -469,6 +469,57 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 			{ 
 				erw_ast_addbranch(blocknode, erw_parse_funccall(parser));
 			}
+			else if(parser->tokens[parser->current + 1].type ==  
+					erw_TOKENTYPE_OPERATOR_ASSIGN || 
+				parser->tokens[parser->current + 1].type == 
+					erw_TOKENTYPE_OPERATOR_ADDASSIGN ||
+				parser->tokens[parser->current + 1].type == 
+					erw_TOKENTYPE_OPERATOR_SUBASSIGN ||
+				parser->tokens[parser->current + 1].type == 
+					erw_TOKENTYPE_OPERATOR_MULASSIGN ||
+				parser->tokens[parser->current + 1].type == 
+					erw_TOKENTYPE_OPERATOR_DIVASSIGN ||
+				parser->tokens[parser->current + 1].type == 
+					erw_TOKENTYPE_OPERATOR_POWASSIGN ||
+				parser->tokens[parser->current + 1].type == 
+					erw_TOKENTYPE_OPERATOR_MODASSIGN)
+			{
+				struct erw_ASTNode* identnode = erw_ast_newfromtoken(
+					erw_parser_expect(parser, erw_TOKENTYPE_IDENT)
+				);
+
+				struct erw_ASTNode* assignnode = erw_ast_newfromtoken(
+					parser->tokens[parser->current]
+				);
+				parser->current++;
+
+				struct erw_ASTNode* exprnode = erw_parse_expression(parser);
+				erw_ast_addbranch(assignnode, identnode);
+				erw_ast_addbranch(assignnode, exprnode);
+				erw_ast_addbranch(blocknode, assignnode);
+			}
+			else
+			{
+				struct Str msg;
+				str_ctorfmt(
+					&msg,
+					"Expected '(', '=', '+=', '-=', '*=', '/=', '^=' or '%%='."
+						" Got %s",
+					parser->tokens[parser->current + 1].type->name
+				);
+
+				erw_error(
+					msg.data, 
+					parser->lines[parser->tokens[parser->current + 1]
+						.linenum - 1].data, 
+					parser->tokens[parser->current + 1].linenum, 
+					parser->tokens[parser->current + 1].column,
+					parser->tokens[parser->current + 1].column + 
+						vec_getsize(parser->tokens[parser->current + 1].text) 
+						- 2
+				);
+				str_dtor(&msg);
+			}
 		}
 		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_IF))
 		{ 
@@ -499,21 +550,12 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 				struct erw_ASTNode* elsenode = erw_ast_newfromtoken(
 					erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_ELSE)
 				);
+
 				erw_ast_addbranch(elsenode, erw_parse_block(parser));
 				erw_ast_addbranch(ifnode, elsenode);
 			}
 
 			erw_ast_addbranch(blocknode, ifnode);
-			continue; //Don't require semicolon
-		}
-		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_DEFER))
-		{
-			struct erw_ASTNode* defernode = erw_ast_newfromtoken(
-				erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_DEFER)
-			);
-
-			erw_ast_addbranch(defernode, erw_parse_block(parser));
-			erw_ast_addbranch(blocknode, defernode);
 			continue; //Don't require semicolon
 		}
 		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_RETURN))
@@ -564,6 +606,30 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 			erw_parser_expect(parser, erw_TOKENTYPE_RPAREN);
 			erw_ast_addbranch(foreign, argsnode);
 			erw_ast_addbranch(blocknode, foreign);
+		}
+		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_DEFER))
+		{
+			struct erw_ASTNode* defernode = erw_ast_newfromtoken(
+				erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_DEFER)
+			);
+
+			erw_ast_addbranch(defernode, erw_parse_block(parser));
+			erw_ast_addbranch(blocknode, defernode);
+			continue; //Don't require semicolon
+		}
+		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_WHILE))
+		{
+			struct erw_ASTNode* whilenode = erw_ast_newfromtoken(
+				erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_WHILE)
+			);
+
+			erw_parser_expect(parser, erw_TOKENTYPE_LPAREN);
+			erw_ast_addbranch(whilenode, erw_parse_expression(parser));
+			erw_parser_expect(parser, erw_TOKENTYPE_RPAREN);
+
+			erw_ast_addbranch(whilenode, erw_parse_block(parser));
+			erw_ast_addbranch(blocknode, whilenode);
+			continue; //Don't require semicolon
 		}
 		else
 		{ 

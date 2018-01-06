@@ -743,6 +743,110 @@ static void erw_checkblock(
 
 				erw_checkblock(newscope, node, lines);
 			}
+			else if(blocknode->branches[i]->token.type == 
+				erw_TOKENTYPE_KEYWORD_WHILE)
+			{
+				struct erw_ASTNode* whilenode = blocknode->branches[i];
+				struct erw_ASTNode* exprnode = whilenode->branches[0];
+				struct erw_ASTNode* whileblock = whilenode->branches[1];
+				struct erw_TypeSymbol* exprtype = erw_getexprtype(
+					scope, 
+					exprnode, 
+					lines
+				);
+
+				struct erw_ASTNode* firstnode = exprnode;
+				while(vec_getsize(firstnode->branches))
+				{
+					firstnode = firstnode->branches[0];
+				}
+
+				struct erw_ASTNode* lastnode = exprnode;
+				while(vec_getsize(lastnode->branches))
+				{
+					lastnode = lastnode->branches[
+						vec_getsize(lastnode->branches) - 1];
+				}
+
+				erw_checkboolean(scope, exprtype, firstnode, lastnode, lines);
+				struct erw_Scope* newscope = erw_scope_new(
+					scope, 
+					scope->funcname,
+					vec_getsize(scope->children),
+					0
+				);
+
+				erw_checkblock(newscope, whileblock, lines);
+			}
+			else if(blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_ASSIGN ||
+				blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_ADDASSIGN ||
+				blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_SUBASSIGN ||
+				blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_MULASSIGN ||
+				blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_DIVASSIGN ||
+				blocknode->branches[i]->token.type == 
+					erw_TOKENTYPE_OPERATOR_POWASSIGN ||
+				blocknode->branches[i]->token.type ==
+					erw_TOKENTYPE_OPERATOR_MODASSIGN)
+			{
+				struct erw_ASTNode* assignnode = blocknode->branches[i];
+				struct erw_ASTNode* identnode = assignnode->branches[0];
+				struct erw_ASTNode* exprnode = assignnode->branches[1];
+				struct erw_VariableSymbol* var = erw_scope_getvariable(
+					scope, 
+					&identnode->token, 
+					lines
+				);
+
+				if(var->ismut || !var->hasvalue)
+				{
+					if(blocknode->branches[i]->token.type != 
+						erw_TOKENTYPE_OPERATOR_ASSIGN)
+					{
+						if(!var->hasvalue)
+						{
+							struct Str msg;
+							str_ctorfmt(
+								&msg, 
+								"Operation '%s' is not allowed on an"
+									" uninitialized variable",
+								assignnode->token.text
+							);
+
+							erw_error(
+								msg.data, 
+								lines[identnode-> token.linenum - 1].data,
+								identnode->token.linenum, 
+								identnode->token.column,
+								identnode->token.column +
+									vec_getsize( identnode->token.text) - 2
+							);
+							str_dtor(&msg);
+						}
+					}
+
+					erw_checkexprtype(scope, exprnode, var->type, lines);
+					var->hasvalue = 1;
+				}
+				else
+				{
+					struct Str msg;
+					str_ctor(&msg, "Reassignment of immutable variable");
+					erw_error(
+						msg.data, 
+						lines[identnode-> token.linenum - 1].data,
+						identnode->token.linenum, 
+						identnode->token.column,
+						identnode->token.column +
+							vec_getsize( identnode->token.text) - 2
+					);
+					str_dtor(&msg);
+				}
+			}
 		}
 		else
 		{ 

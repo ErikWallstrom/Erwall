@@ -38,6 +38,7 @@ extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ELSEIF;
 extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ELSE;
 extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_CAST;
 extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_DEFER;
+extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_WHILE;
 extern const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DECLR;
 extern const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ADD;
 extern const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_SUB;
