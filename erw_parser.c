@@ -458,7 +458,7 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 			if(erw_parser_check(parser, erw_TOKENTYPE_OPERATOR_ASSIGN))
 			{ 
 				erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_ASSIGN);
-				erw_ast_addbranch(varnode, erw_parse_expression(parser));
+				erw_ast_addbranch(valuenode, erw_parse_expression(parser));
 			}
 			erw_ast_addbranch(varnode, valuenode);
 		}

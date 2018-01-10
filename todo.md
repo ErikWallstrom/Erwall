@@ -1,5 +1,6 @@
 # Todo
 
+* Tail call optimization
 * Calculate expressions at compile time
 * Implement arrays
 * Implement structs, unions, enums
