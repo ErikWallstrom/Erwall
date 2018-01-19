@@ -1,22 +1,40 @@
-func test: () 
+func fib: (let n: Int32) -> Int32
 {
-	@puts("OK");
-	mut x: Int32;
-	x = 12;
-
-	x = 33;
-
-	@printf("%i", x);
+	if(n == 0)
+	{
+		return 0;
+	}
+	elseif(n == 1 || n == 2)
+	{
+		return 1;
+	}
+	else
+	{
+		return fib(n - 1) + fib(n - 2);
+	}
 }
 
 func main: () -> Int32
 {
-	test();
-	while(true)
+	let hello: Int32 = 12;
+	fib(33);
+	func test: ()
 	{
-		@puts("LMAO");
+		type Int: Int32;
+		func testa: (let yaaslkdj: Int)
+		{
+			@printf("%i", yaaslkdj);
+		}
+
+		testa(cast(Int, 3));
 	}
 
+	test();
+	if(hello < 3)
+	{
+	}
+
+	@printf("%i\n", fib(30));
 	return 0;
 }
 

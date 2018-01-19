@@ -107,6 +107,8 @@ static void onerror(void* udata)
 	abort();
 }
 
+#include <time.h>
+
 int main(int argc, char* argv[])
 {
 	struct ArgParserLongOpt options[] = { 
@@ -150,8 +152,14 @@ int main(int argc, char* argv[])
 		struct File file;
 		file_ctor(&file, argparser.results[0].arg, FILEMODE_READ);
 
+		double total = 0.0;
+		clock_t start = clock();
 		Vec(struct Str) lines = getlines(file.content);
 		Vec(struct erw_Token) tokens = erw_tokenize(file.content, lines);
+		clock_t stop = clock();
+		double elapsed = (double)(stop - start) * 1000.0 / CLOCKS_PER_SEC;
+		total += elapsed;
+
 		if(argparser.results[1].used) //--tokenize
 		{ 
 			ansicode_printf(&titlecolor, "\nTokens:\n\n");
@@ -164,40 +172,67 @@ int main(int argc, char* argv[])
 				};
 				ansicode_printf(&color, "%s\n", tokens[i].text);
 			}
+			printf("(%f ms)\n\n", elapsed);
 		}
 
+		start = clock();
 		struct erw_ASTNode* ast = erw_parse(tokens, lines);
+		stop = clock();
+		elapsed = (double)(stop - start) * 1000.0 / CLOCKS_PER_SEC;
+		total += elapsed;
+
 		if(argparser.results[2].used)
 		{ 
 			ansicode_printf(&titlecolor, "\nAbstract Syntax Tree:\n\n");
 			erw_ast_print(ast);
 			putchar('\n');
+			printf("(%f ms)\n\n", elapsed);
 		}
 
+		start = clock();
 		struct erw_Scope* scope = erw_checksemantics(ast, lines);
+		stop = clock();
+		elapsed = (double)(stop - start) * 1000.0 / CLOCKS_PER_SEC;
+		total += elapsed;
+
 		if(argparser.results[3].used)
 		{ 
 			ansicode_printf(&titlecolor, "\nSymbol Table:\n\n");
 			erw_scope_print(scope);
 			putchar('\n');
+			printf("(%f ms)\n\n", elapsed);
 		}
 
 		//erw_optimize(ast, scope);
 		//erw_interpret(ast, scope);
 
+		start = clock();
 		struct Str code = erw_generate(ast, scope);
+		stop = clock();
+		elapsed = (double)(stop - start) * 1000.0 / CLOCKS_PER_SEC;
+		total += elapsed;
+
 		if(argparser.results[4].used)
 		{
 			ansicode_printf(&titlecolor, "\nGenerated C code:\n\n");
 			puts(code.data);
+			printf("(%f ms)\n\n", elapsed);
 		}
 
 		if(argparser.results[5].used)
 		{
 			ansicode_printf(&titlecolor, "Compiler Output:\n\n");
+			start = clock();
 			compile(&code, argparser.results[0].arg);
+			stop = clock();
+			elapsed = (double)(stop - start) * 1000.0 / CLOCKS_PER_SEC;
+			total += elapsed;
+
 			putchar('\n');
+			printf("(%f ms)\n\n", elapsed);
 		}
+
+		printf("\nTotal time: %f ms\n", total);
 
 		//Cleanup
 		erw_scope_dtor(scope);

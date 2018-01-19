@@ -575,21 +575,25 @@ static struct erw_BlockResult erw_generateblock(
 		}
 	}
 
-	size_t lastindex = vec_getsize(blocknode->branches) - 1;
-	if(!blocknode->branches[lastindex]->istoken || 
-		blocknode->branches[lastindex]->token.type !=
-			erw_TOKENTYPE_KEYWORD_RETURN)
+	size_t numblockbranches = vec_getsize(blocknode->branches);
+	if(numblockbranches)
 	{
-		size_t numfinalizers = vec_getsize(blockscope->finalizers);
-		for(size_t i = numfinalizers - 1; i < numfinalizers; i++)
+		size_t lastindex = numblockbranches - 1;
+		if(!blocknode->branches[lastindex]->istoken || 
+			blocknode->branches[lastindex]->token.type !=
+				erw_TOKENTYPE_KEYWORD_RETURN)
 		{
-			struct erw_BlockResult block = erw_generateblock(
-				blockscope->finalizers[i].node, 
-				blockscope->children[blockscope->finalizers[i].index],
-				indentlvl + 1
-			);
-			str_append(&result.blockcode, block.blockcode.data);
-			str_append(&result.header, block.header.data);
+			size_t numfinalizers = vec_getsize(blockscope->finalizers);
+			for(size_t i = numfinalizers - 1; i < numfinalizers; i++)
+			{
+				struct erw_BlockResult block = erw_generateblock(
+					blockscope->finalizers[i].node, 
+					blockscope->children[blockscope->finalizers[i].index],
+					indentlvl + 1
+				);
+				str_append(&result.blockcode, block.blockcode.data);
+				str_append(&result.header, block.header.data);
+			}
 		}
 	}
 
@@ -597,8 +601,8 @@ static struct erw_BlockResult erw_generateblock(
 	{ 
 		str_append(&result.blockcode, "\t");
 	}
-	str_append(&result.blockcode, "}\n");
 
+	str_append(&result.blockcode, "}\n");
 	return result;
 }
 
