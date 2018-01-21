@@ -40,29 +40,32 @@
 
 ## Ideas
 
-* Nested comments ✔
-* Nested functions ✔
-* Compatible with C ✔
-* Real constant variables ✔
-* Readable generated C code ✔
-* Strict types (no implicit int to float or enum to int conversions) ✔
-* Defer (like Go) ✔
-* No undefined behavior ✔
-* Code that compiles should be safe ✔
-* Arrays as first-class citizens
-* Size of arrays known
-* Compile time bounds checking (zero cost)
-* Tagged unions by default
-* References (non-null pointers)
-* Anonymous struct in structs (like Go)
-* Compile time execution and loading of strings
+* [x] Nested comments
+* [x] Nested functions
+* [x] Compatible with C
+* [x] Real constant variables
+* [x] Readable generated C code
+* [x] Strict types (no implicit int to float or enum to int conversions)
+* [x] Defer (like Go)
+* [x] No undefined behavior
+* [x] Code that compiles should be safe
+* [x] Empty types
+* [ ] Arrays as first-class citizens
+* [ ] Size of arrays known
+* [ ] Compile time bounds checking (zero cost)
+* [ ] Tagged unions by default
+* [ ] References (non-null pointers)
+* [ ] Anonymous struct in structs (like Go)
+* [ ] Compile time execution and loading of strings
+* [ ] Guaranteed tail calls
 
-* Literal heavy (why declare variables when what you really want are values?) (?)
-* Default values for structs (?)
-* Switch working for all types (?)
-* Const by default (?) ✔
-* Forced type naming conventions, i.e starting with capital letter (?) ✔
-* Resizable arrays (?)
-* Type inference (?)
+* [ ] Literal heavy (why declare variables when what you really want are \
+      values?) (?)
+* [ ] Default values for structs (?)
+* [ ] Switch working for all types (?)
+* [x] Const by default (?)
+* [x] Forced type naming conventions, i.e starting with capital letter (?)
+* [ ] Resizable arrays (?)
+* [ ] Type inference (?)
 
 ![](http://www.gnu.org/graphics/gplv3-127x51.png "GPLv3")

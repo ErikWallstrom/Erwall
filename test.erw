@@ -1,16 +1,105 @@
-type Test: Int32;
+# Comment
+#[ Multiline comment
+	# Nested comment
+	#[
+		Nested multiline comment
+		...
+	#]
+#]
 
-func test: (let x: Int32) -> Bool
+# Empty types
+type Empty1; 
+type Empty2; 
+type Empty3; 
+type Empty4; 
+
+# Typedefs 
+type TypeDef1: Char;
+type TypeDef2: Bool; 
+type TypeDef3: Int8; 
+type TypeDef4: Int16; 
+type TypeDef5: Int32;
+type TypeDef6: Int64; 
+type TypeDef7: UInt8; 
+type TypeDef8: UInt16; 
+type TypeDef9: UInt32;
+type TypeDef10: UInt64; 
+type TypeDef11: Float32; 
+type TypeDef12: Float64; 
+
+# Functions
+func function1: ()
 {
-	@printf("%i\n", x);
-	return false;
+	# Nested functions
+	func nestedfunction1: () {}
+	func nestedfunction2: (let x: TypeDef1) -> Int32 {return 0;} 
+	func nestedfunction3: (let x: TypeDef1, mut y: Int32) -> Int32 {return 0;} 
+
+	func test: () -> Int32
+	{ 
+		return 12;
+	}
+
+	type T: UInt8;
+	let x: T = cast(T, 12);
+	return;
 }
 
 func main: () -> Int32
 {
-	mut x: Test = cast(Test, 12);
-	x += cast(Test, 24);
-	test(cast(Int32, x));
+	defer 
+	{
+		@puts("Hello World");
+	}
+
+	let xx: Int32 = 12;
+	let y: Float64;
+	let z: Char;
+	let a: Int32[];
+	let b: Int32*;
+	let c: Int32*[]*[][];
+	mut d: Int32*[]*[][];
+
+	type T: Int32;
+	func test: (let x: Int32) -> T
+	{
+		defer 
+		{
+			@puts("!!!");
+		}
+		return cast(T, 44) + x;
+	}
+
+	if(true)
+	{
+		function1();
+	}
+	elseif(false)
+	{
+
+	}
+	else
+	{
+		while(true)
+		{
+			return 44;
+		}
+	}
+
+	mut x: Int32 = cast(Int32, test(3));
+	x += 12;
+	x *= (1 + 1) * 2;
+	x /= 2;
+	x ^= 2;
+	x %= 3;
+	@printf("%i", x);
+
+	x = x + 19;
+	if(x < 20 || x > 20 && x != 12 && x == 12)
+	{
+		
+	}
+
 	return 0;
 }
 
