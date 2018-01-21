@@ -96,23 +96,28 @@ static struct erw_ASTNode* erw_parse_type(struct erw_Parser* parser)
 		erw_parser_expect(parser, erw_TOKENTYPE_TYPE)
 	);
 
-	/*
 	while(1)
 	{ 
-		if(parser_check(parser, TOKENTYPE_OPERATOR_MUL))
+		if(erw_parser_check(parser, erw_TOKENTYPE_OPERATOR_MUL))
 		{ 
+			erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_MUL);
+			struct erw_ASTNode* tempnode = typenode;
+			typenode = erw_ast_newfromnodetype(erw_ASTNODETYPE_REFERENCE);
+			erw_ast_addbranch(typenode, tempnode);
 		}
-		else if(parser_check(parser, TOKENTYPE_OPERATOR_BITAND))
+		else if(erw_parser_check(parser, erw_TOKENTYPE_LBRACKET))
 		{ 
-		}
-		else if(parser_check(parser, TOKENTYPE_LBRACKET))
-		{ 
+			erw_parser_expect(parser, erw_TOKENTYPE_LBRACKET);
+			erw_parser_expect(parser, erw_TOKENTYPE_RBRACKET);
+			struct erw_ASTNode* tempnode = typenode;
+			typenode = erw_ast_newfromnodetype(erw_ASTNODETYPE_ARRAY);
+			erw_ast_addbranch(typenode, tempnode);
 		}
 		else
 		{ 
+			break;
 		}
 	}
-	*/
 
 	return typenode;
 }
@@ -131,10 +136,7 @@ static struct erw_ASTNode* erw_parse_typedeclr(struct erw_Parser* parser)
 	if(erw_parser_check(parser, erw_TOKENTYPE_OPERATOR_DECLR))
 	{ 
 		erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_DECLR);
-		struct erw_ASTNode* typenode = erw_ast_newfromtoken(
-			erw_parser_expect(parser, erw_TOKENTYPE_TYPE)
-		);
-
+		struct erw_ASTNode* typenode = erw_parse_type(parser);
 		erw_ast_addbranch(typedeclrnode, typenode);
 	}
 
@@ -184,9 +186,7 @@ static struct erw_ASTNode* erw_parse_factor(struct erw_Parser* parser)
 		);
 
 		erw_parser_expect(parser, erw_TOKENTYPE_LPAREN);
-		struct erw_ASTNode* typenode = erw_ast_newfromtoken(
-			erw_parser_expect(parser, erw_TOKENTYPE_TYPE)
-		);
+		struct erw_ASTNode* typenode = erw_parse_type(parser);
 		erw_ast_addbranch(factnode, typenode);
 		erw_parser_expect(parser, erw_TOKENTYPE_COMMA);
 

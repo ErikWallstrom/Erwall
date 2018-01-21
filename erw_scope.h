@@ -21,29 +21,19 @@
 #define ERW_SCOPE_H
 
 #include "erw_tokenizer.h"
-#include "erw_ast.h"
-#include "vec.h"
+#include "erw_type.h"
 
-struct erw_TypeSymbol
+struct erw_Function
 {
-	struct erw_TypeSymbol* type;
-	struct erw_ASTNode* node;
-	const char* name;
-	int native;
-	int used;
-};
-
-struct erw_FunctionSymbol
-{
-	struct erw_TypeSymbol* type;
+	struct erw_Type* type;
 	struct erw_ASTNode* node;
 	const char* name;
 	int used;
 };
 
-struct erw_VariableSymbol
+struct erw_Variable
 {
-	struct erw_TypeSymbol* type;
+	struct erw_Type* type;
 	struct erw_ASTNode* node;
 	const char* name;
 	int hasvalue;
@@ -60,9 +50,9 @@ struct erw_Finalizer //Is this really a good name?
 
 struct erw_Scope
 {
-	Vec(struct erw_FunctionSymbol) functions;
-	Vec(struct erw_VariableSymbol) variables;
-	Vec(struct erw_TypeSymbol) types;
+	Vec(struct erw_Function) functions;
+	Vec(struct erw_Variable) variables;
+	Vec(struct erw_Type*) types;
 	Vec(struct erw_Scope*) children;
 	Vec(struct erw_Finalizer) finalizers;
 	struct erw_Scope* parent;
@@ -77,20 +67,19 @@ struct erw_Scope* erw_scope_new(
 	size_t index,
 	int isfunction
 );
-
-struct erw_VariableSymbol* erw_scope_getvariable(
+struct erw_Variable* erw_scope_getvariable(
 	struct erw_Scope* self, 
 	struct erw_Token* token,
 	struct Str* lines
 );
-struct erw_FunctionSymbol* erw_scope_getfunction(
+struct erw_Function* erw_scope_getfunction(
 	struct erw_Scope* self, 
 	struct erw_Token* token,
 	struct Str* lines
 );
-struct erw_TypeSymbol* erw_scope_gettype(
+struct erw_Type* erw_scope_gettype(
 	struct erw_Scope* self, 
-	struct erw_Token* token,
+	struct erw_ASTNode* node,
 	struct Str* lines
 );
 void erw_scope_addvariable(
@@ -103,11 +92,10 @@ void erw_scope_addfunction(
 	struct erw_ASTNode* node,
 	struct Str* lines
 );
-void erw_scope_addtype(
+void erw_scope_addtypedef(
 	struct erw_Scope* self, 
 	struct erw_ASTNode* node,
-	struct Str* lines,
-	int native
+	struct Str* lines
 );
 void erw_scope_print(struct erw_Scope* self);
 void erw_scope_dtor(struct erw_Scope* self);

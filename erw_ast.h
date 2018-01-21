@@ -30,6 +30,8 @@ struct erw_ASTNodeType
 
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_START;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_BLOCK;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ARRAY;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_REFERENCE;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_VAR_VALUE;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNC_CALL;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNC_ARGS;

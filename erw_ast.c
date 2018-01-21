@@ -26,6 +26,10 @@ const struct erw_ASTNodeType* const erw_ASTNODETYPE_START =
 	&(struct erw_ASTNodeType){"Start"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_BLOCK = 
 	&(struct erw_ASTNodeType){"Block"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_ARRAY =
+	&(struct erw_ASTNodeType){"Array"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_REFERENCE = 
+	&(struct erw_ASTNodeType){"Reference"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_VAR_VALUE =
 	&(struct erw_ASTNodeType){"Variable value"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNC_ARG =

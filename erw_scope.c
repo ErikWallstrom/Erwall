@@ -24,7 +24,7 @@
 
 #include <stdlib.h>
 
-static struct erw_VariableSymbol* erw_scope_findvariable(
+static struct erw_Variable* erw_scope_findvariable(
 	struct erw_Scope* self, 
 	const char* name)
 {
@@ -59,7 +59,7 @@ static struct erw_VariableSymbol* erw_scope_findvariable(
 	return NULL;
 }
 
-static struct erw_FunctionSymbol* erw_scope_findfunction(
+static struct erw_Function* erw_scope_findfunction(
 	struct erw_Scope* self, 
 	const char* name)
 {
@@ -83,7 +83,7 @@ static struct erw_FunctionSymbol* erw_scope_findfunction(
 	return NULL;
 }
 
-static struct erw_TypeSymbol* erw_scope_findtype(
+static struct erw_Type* erw_scope_findtype(
 	struct erw_Scope* self, 
 	const char* name)
 {
@@ -95,9 +95,9 @@ static struct erw_TypeSymbol* erw_scope_findtype(
 	{
 		for(size_t i = 0; i < vec_getsize(scope->types); i++)
 		{
-			if(!strcmp(scope->types[i].name, name))
+			if(!strcmp(scope->types[i]->typedef_.name, name))
 			{
-				return &scope->types[i];
+				return scope->types[i];
 			}
 		}
 
@@ -119,9 +119,9 @@ struct erw_Scope* erw_scope_new(
 		log_error("malloc failed in <%s>", __func__);
 	}
 
-	self->functions = vec_ctor(struct erw_FunctionSymbol, 0);
-	self->variables = vec_ctor(struct erw_VariableSymbol, 0);
-	self->types = vec_ctor(struct erw_TypeSymbol, 0);
+	self->functions = vec_ctor(struct erw_Function, 0);
+	self->variables = vec_ctor(struct erw_Variable, 0);
+	self->types = vec_ctor(struct erw_Type*, 0);
 	self->children = vec_ctor(struct erw_Scope*, 0);
 	self->finalizers = vec_ctor(struct erw_Finalizer, 0);
 	self->parent = parent;
@@ -137,7 +137,7 @@ struct erw_Scope* erw_scope_new(
 	return self;
 }
 
-struct erw_VariableSymbol* erw_scope_getvariable(
+struct erw_Variable* erw_scope_getvariable(
 	struct erw_Scope* self, 
 	struct erw_Token* token,
 	struct Str* lines)
@@ -146,7 +146,7 @@ struct erw_VariableSymbol* erw_scope_getvariable(
 	log_assert(token, "is NULL");
 	log_assert(lines, "is NULL");
 
-	struct erw_VariableSymbol* ret = erw_scope_findvariable(self, token->text);
+	struct erw_Variable* ret = erw_scope_findvariable(self, token->text);
 	if(!ret)
 	{ 
 		struct Str msg;
@@ -168,7 +168,7 @@ struct erw_VariableSymbol* erw_scope_getvariable(
 	return ret;
 }
 
-struct erw_FunctionSymbol* erw_scope_getfunction(
+struct erw_Function* erw_scope_getfunction(
 	struct erw_Scope* self, 
 	struct erw_Token* token,
 	struct Str* lines)
@@ -177,7 +177,7 @@ struct erw_FunctionSymbol* erw_scope_getfunction(
 	log_assert(token, "is NULL");
 	log_assert(lines, "is NULL");
 
-	struct erw_FunctionSymbol* ret = erw_scope_findfunction(self, token->text);
+	struct erw_Function* ret = erw_scope_findfunction(self, token->text);
 	if(!ret)
 	{ 
 		struct Str msg;
@@ -195,31 +195,44 @@ struct erw_FunctionSymbol* erw_scope_getfunction(
 	return ret;
 }
 
-struct erw_TypeSymbol* erw_scope_gettype(
+struct erw_Type* erw_scope_gettype(
 	struct erw_Scope* self, 
-	struct erw_Token* token,
+	struct erw_ASTNode* node,
 	struct Str* lines)
 {
 	log_assert(self, "is NULL");
-	log_assert(token, "is NULL");
+	log_assert(node, "is NULL");
 	log_assert(lines, "is NULL");
 
-	struct erw_TypeSymbol* ret = erw_scope_findtype(self, token->text);
-	if(!ret)
-	{ 
-		struct Str msg;
-		str_ctor(&msg, "Undefined type");
-		erw_error(
-			msg.data, 
-			lines[token->linenum - 1].data, 
-			token->linenum, 
-			token->column,
-			token->column + vec_getsize(token->text) - 2
+	struct erw_Type* type = erw_type_newfromastnode(node);
+	struct erw_Type* basetype = erw_type_getbase(type);
+
+	if(basetype->type == erw_TYPETYPE_TYPEDEF)
+	{
+		struct erw_Type* foundtype = erw_scope_findtype(
+			self, 
+			basetype->typedef_.name
 		);
-		str_dtor(&msg);
+
+		if(!foundtype)
+		{
+			struct Str msg;
+			str_ctor(&msg, "Undefined type");
+			erw_error(
+				msg.data, 
+				lines[basetype->typedef_.token->linenum - 1].data, 
+				basetype->typedef_.token->linenum, 
+				basetype->typedef_.token->column,
+				basetype->typedef_.token->column + 
+					vec_getsize(basetype->typedef_.token->text) - 2
+			);
+			str_dtor(&msg);
+		}
+
+		basetype->typedef_.type = foundtype->typedef_.type;
 	}
 
-	return ret;
+	return type;
 }
 
 void erw_scope_addvariable(
@@ -231,7 +244,7 @@ void erw_scope_addvariable(
 	log_assert(node, "is NULL");
 	log_assert(lines, "is NULL");
 
-	struct erw_VariableSymbol* var = erw_scope_findvariable(
+	struct erw_Variable* var = erw_scope_findvariable(
 		self, 
 		node->branches[0]->token.text
 	);
@@ -258,7 +271,7 @@ void erw_scope_addvariable(
 		str_dtor(&msg);
 	}
 
-	struct erw_FunctionSymbol* func = erw_scope_findfunction(
+	struct erw_Function* func = erw_scope_findfunction(
 		self, 
 		node->branches[0]->token.text
 	);
@@ -285,9 +298,7 @@ void erw_scope_addvariable(
 		str_dtor(&msg);
 	}
 
-	erw_scope_gettype(self, &node->branches[1]->token, lines);
-
-	struct erw_VariableSymbol symbol;
+	struct erw_Variable symbol;
 	if(node->token.type == erw_TOKENTYPE_KEYWORD_LET)
 	{
 		symbol.ismut = 0;
@@ -324,10 +335,13 @@ void erw_scope_addvariable(
 		symbol.hasvalue = 1;
 	}
 
+	struct erw_ASTNode* typenode = node->branches[1];
+
+	symbol.type = erw_scope_gettype(self, typenode, lines);
 	symbol.name = node->branches[0]->token.text;
-	symbol.type = erw_scope_findtype(self, node->branches[1]->token.text);
 	symbol.node = node;
 	symbol.used = 0;
+
 	vec_pushback(self->variables, symbol);
 }
 
@@ -340,7 +354,7 @@ void erw_scope_addfunction(
 	log_assert(node, "is NULL");
 	log_assert(lines, "is NULL");
 
-	struct erw_FunctionSymbol* func = erw_scope_findfunction(
+	struct erw_Function* func = erw_scope_findfunction(
 		self, 
 		node->branches[0]->token.text
 	);
@@ -367,7 +381,7 @@ void erw_scope_addfunction(
 		str_dtor(&msg);
 	}
 
-	struct erw_VariableSymbol* var = erw_scope_findvariable(
+	struct erw_Variable* var = erw_scope_findvariable(
 		self, 
 		node->branches[0]->token.text
 	);
@@ -394,82 +408,83 @@ void erw_scope_addfunction(
 		str_dtor(&msg);
 	}
 
+	struct erw_Function symbol;
 	if(vec_getsize(node->branches[2]->branches))
 	{
-		erw_scope_gettype(self, &node->branches[2]->branches[0]->token, lines);
-	}
-
-	struct erw_FunctionSymbol symbol;
-	symbol.name = node->branches[0]->token.text;
-	if(vec_getsize(node->branches[2]->branches))
-	{
-		symbol.type = erw_scope_findtype(
-			self, 
-			node->branches[2]->branches[0]->token.text
-		);
+		struct erw_ASTNode* typenode = node->branches[2]->branches[0];
+		symbol.type = erw_scope_gettype(self, typenode, lines);
 	}
 	else
 	{
 		symbol.type = NULL;
 	}
+
+	symbol.name = node->branches[0]->token.text;
 	symbol.node = node;
 	symbol.used = 0;
 	vec_pushback(self->functions, symbol);
 }
 
-void erw_scope_addtype(
+void erw_scope_addtypedef(
 	struct erw_Scope* self, 
 	struct erw_ASTNode* node,
-	struct Str* lines,
-	int native)
+	struct Str* lines)
 {
 	log_assert(self, "is NULL");
 	log_assert(node, "is NULL");
 	log_assert(lines, "is NULL");
 
-	struct erw_TypeSymbol* type = erw_scope_findtype(
-		self, 
-		node->branches[0]->token.text
-	);
-
+	struct erw_Type* type1 = erw_type_newfromastnode(node->branches[0]);
+	struct erw_Type* type = erw_scope_findtype(self, type1->typedef_.name);
 	if(type)
 	{
 		struct Str msg;
 		str_ctorfmt(
 			&msg,
 			"Redefinition of type ('%s') declared at line %zu, column %zu", 
-			node->branches[0]->token.text,
-			type->node->branches[0]->token.linenum,
-			type->node->branches[0]->token.column
+			type1->typedef_.name,
+			type->typedef_.token->linenum,
+			type->typedef_.token->column
 		);
 
 		erw_error(
 			msg.data, 
-			lines[node->branches[0]->token.linenum - 1].data, 
-			node->branches[0]->token.linenum, 
-			node->branches[0]->token.column,
-			node->branches[0]->token.column + 
-				vec_getsize(node->branches[0]->token.text) - 2
+			lines[type1->typedef_.token->linenum - 1].data, 
+			type1->typedef_.token->linenum, 
+			type1->typedef_.token->column,
+			type1->typedef_.token->column + 
+				vec_getsize(type1->typedef_.token->text) - 2
 		);
 		str_dtor(&msg);
 	}
 
-	struct erw_TypeSymbol symbol;
 	if(vec_getsize(node->branches) == 2)
 	{
-		erw_scope_gettype(self, &node->branches[1]->token, lines);
-		symbol.type = erw_scope_findtype(self, node->branches[1]->token.text);
-	}
-	else
-	{
-		symbol.type = NULL;
+		log_assert(node->branches[1]->istoken, "???");
+		struct erw_Type* type2 = erw_type_newfromastnode(node->branches[1]);
+		if(type2->type != erw_TYPETYPE_TYPEDEF)
+		{
+			struct Str msg;
+			str_ctor(&msg, "You cannot declare a Type to be a reference/array");
+			erw_error(
+				msg.data, 
+				lines[node->branches[0]->token.linenum - 1].data, 
+				node->branches[0]->token.linenum, 
+				node->branches[0]->token.column,
+				node->branches[0]->token.column + 
+					vec_getsize(node->branches[0]->token.text) - 2
+			);
+			str_dtor(&msg);
+		}
+
+		type1->typedef_.type = erw_scope_gettype(
+			self, 
+			node->branches[1], 
+			lines
+		);
 	}
 
-	symbol.name = node->branches[0]->token.text;
-	symbol.node = node;
-	symbol.native = native;
-	symbol.used = 0;
-	vec_pushback(self->types, symbol);
+	vec_pushback(self->types, type1);
 }
 
 void erw_scope_printinternal(struct erw_Scope* self, size_t level)
@@ -495,27 +510,41 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 
 	for(size_t i = 0; i < vec_getsize(self->types); i++)
 	{
-		for(size_t j = 0; j < level + 1; j++)
+		if(self->types[i]->typedef_.type)
 		{
-			printf("    ");
-			printf("│");
-		}
+			int isnative = 0;
+			for(size_t j = 0; j < erw_TYPEBUILTIN_COUNT; j++)
+			{  
+				if(self->types[i]->typedef_.name == 
+					erw_type_builtins[j]->typedef_.name)
+				{
+					isnative = 1;
+					break;
+				}
+			}
 
-		if(self->types[i].native)
-		{
-			printf("─ Type: %s (native)\n", self->types[i].name);
-		}
-		else if(self->types[i].type)
-		{
-			printf(
-				"─ Type: %s (%s)\n", 
-				self->types[i].name, 
-				self->types[i].type ? self->types[i].type->name : "null"
-			);
+			if(!isnative)
+			{
+				for(size_t j = 0; j < level + 1; j++)
+				{
+					printf("    ");
+					printf("│");
+				}
+
+				struct Str str = erw_type_tostring(self->types[i]->typedef_.type);
+				printf("─ Type: %s (%s)\n", self->types[i]->typedef_.name, str.data);
+				str_dtor(&str);
+			}
 		}
 		else
 		{
-			printf("─ Type: %s\n", self->types[i].name);
+			for(size_t j = 0; j < level + 1; j++)
+			{
+				printf("    ");
+				printf("│");
+			}
+
+			printf("─ Type: %s\n", self->types[i]->typedef_.name);
 		}
 	}
 
@@ -527,11 +556,15 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 			printf("│");
 		}
 
-		printf(
-			"─ Function: %s (%s)\n", 
-			self->functions[i].name, 
-			self->functions[i].type ? self->functions[i].type->name : "null"
-		);
+		if(self->functions[i].type)
+		{
+			struct Str str = erw_type_tostring(self->functions[i].type);
+			printf("─ Function: %s (%s)\n", self->functions[i].name, str.data);
+		}
+		else
+		{
+			printf("─ Function: %s\n", self->functions[i].name);
+		}
 	}
 
 	for(size_t i = 0; i < vec_getsize(self->variables); i++)
@@ -542,11 +575,8 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 			printf("│");
 		}
 
-		printf(
-			"─ Variable: %s (%s)\n", 
-			self->variables[i].name, 
-			self->variables[i].type ? self->variables[i].type->name : "null"
-		);
+		struct Str str = erw_type_tostring(self->variables[i].type);
+		printf("─ Variable: %s (%s)\n", self->variables[i].name, str.data);
 	}
 
 	for(size_t i = 0; i < vec_getsize(self->children); i++)

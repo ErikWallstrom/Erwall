@@ -172,7 +172,7 @@ int main(int argc, char* argv[])
 				};
 				ansicode_printf(&color, "%s\n", tokens[i].text);
 			}
-			printf("(%f ms)\n\n", elapsed);
+			printf("\n(%f ms)\n\n", elapsed);
 		}
 
 		start = clock();
@@ -206,6 +206,7 @@ int main(int argc, char* argv[])
 		//erw_optimize(ast, scope);
 		//erw_interpret(ast, scope);
 
+		/*
 		start = clock();
 		struct Str code = erw_generate(ast, scope);
 		stop = clock();
@@ -231,6 +232,7 @@ int main(int argc, char* argv[])
 			putchar('\n');
 			printf("(%f ms)\n\n", elapsed);
 		}
+		*/
 
 		printf("\nTotal time: %f ms\n", total);
 

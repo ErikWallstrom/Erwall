@@ -3,27 +3,27 @@
 #include "log.h"
 
 static void erw_checkboolean(
-	struct erw_Scope* scope,
-	struct erw_TypeSymbol* ret,
+	struct erw_Type* type,
 	struct erw_ASTNode* firstnode,
 	struct erw_ASTNode* lastnode,
 	struct Str* lines)
 {
-	log_assert(scope, "is NULL");
-	log_assert(ret, "is NULL");
+	log_assert(type, "is NULL");
 	log_assert(firstnode, "is NULL");
 	log_assert(lastnode, "is NULL");
 	log_assert(lines, "is NULL");
 
-	while(ret->type) //Get base type
+	struct erw_Type* base = erw_type_getbase(type);
+	if(type->type != erw_TYPETYPE_TYPEDEF || base->type != erw_TYPETYPE_BOOL)
 	{
-		ret = ret->type;
-	}
-
-	if(strcmp(ret->name, "Bool"))
-	{
+		struct Str typename = erw_type_tostring(type);
 		struct Str msg;
-		str_ctorfmt(&msg, "Expected type 'Bool', got type '%s'", ret->name);
+		str_ctorfmt(
+			&msg, 
+			"Expected type 'Bool', got type '%s'", 
+			typename.data
+		);
+
 		erw_error(
 			msg.data, 
 			lines[firstnode->token.linenum - 1].data,
@@ -39,37 +39,29 @@ static void erw_checkboolean(
 }
 
 static void erw_checknumerical(
-	struct erw_Scope* scope,
-	struct erw_TypeSymbol* ret,
+	struct erw_Type* type,
 	struct erw_ASTNode* firstnode,
 	struct erw_ASTNode* lastnode,
 	struct Str* lines)
 {
-	log_assert(scope, "is NULL");
-	log_assert(ret, "is NULL");
+	log_assert(type, "is NULL");
 	log_assert(firstnode, "is NULL");
 	log_assert(lastnode, "is NULL");
 	log_assert(lines, "is NULL");
  
-	while(ret->type) //Get base type
+	struct erw_Type* base = erw_type_getbase(type);
+	if(type->type != erw_TYPETYPE_TYPEDEF ||
+		(base->type != erw_TYPETYPE_INT &&
+		 base->type != erw_TYPETYPE_FLOAT))
 	{
-		ret = ret->type;
-	}
-
-	if(strcmp(ret->name, "Int8") &&
-		strcmp(ret->name, "Int16") &&
-		strcmp(ret->name, "Int32") &&
-		strcmp(ret->name, "Int64") &&
-		strcmp(ret->name, "UInt8") &&
-		strcmp(ret->name, "UInt16") &&
-		strcmp(ret->name, "UInt32") &&
-		strcmp(ret->name, "UInt64") &&
-		strcmp(ret->name, "Float32") &&
-		strcmp(ret->name, "Float64")
-	)
-	{
+		struct Str typename = erw_type_tostring(type);
 		struct Str msg;
-		str_ctorfmt(&msg, "Expected numerical type, got type '%s'", ret->name);
+		str_ctorfmt(
+			&msg, 
+			"Expected numerical type, got type '%s'", 
+			typename.data
+		);
+
 		erw_error(
 			msg.data, 
 			lines[firstnode->token.linenum - 1].data,
@@ -90,7 +82,7 @@ static void erw_checkfunccall(
 	struct Str* lines
 );
 
-static struct erw_TypeSymbol* erw_getexprtype(
+static struct erw_Type* erw_getexprtype(
 	struct erw_Scope* scope,
 	struct erw_ASTNode* exprnode,
 	struct Str* lines)
@@ -99,7 +91,7 @@ static struct erw_TypeSymbol* erw_getexprtype(
 	log_assert(exprnode, "is NULL");
 	log_assert(lines, "is NULL");
 
-	struct erw_TypeSymbol* ret = NULL;
+	struct erw_Type* ret = NULL;
 	if(exprnode->istoken)
 	{
 		if(exprnode->token.type == erw_TOKENTYPE_KEYWORD_CAST)
@@ -107,19 +99,19 @@ static struct erw_TypeSymbol* erw_getexprtype(
 			//TODO: Check that types are cast-compatible
 			ret = erw_scope_gettype(
 				scope, 
-				&exprnode->branches[0]->token, 
+				exprnode->branches[0], 
 				lines
 			);
 			erw_getexprtype(scope, exprnode->branches[1], lines);
 		}
 		else if(vec_getsize(exprnode->branches) == 2) //Binary operator
 		{
-			struct erw_TypeSymbol* typesym1 = erw_getexprtype(
+			struct erw_Type* typesym1 = erw_getexprtype(
 				scope, 
 				exprnode->branches[0], 
 				lines
 			);
-			struct erw_TypeSymbol* typesym2 = erw_getexprtype(
+			struct erw_Type* typesym2 = erw_getexprtype(
 				scope, 
 				exprnode->branches[1], 
 				lines
@@ -138,18 +130,17 @@ static struct erw_TypeSymbol* erw_getexprtype(
 					vec_getsize(lastnode->branches) - 1];
 			}
 
-			const char* type1 = typesym1->name;
-			const char* type2 = typesym2->name;
-
-			if(strcmp(type1, type2))
+			if(!erw_type_compare(typesym1, typesym1))
 			{
+				struct Str typename1 = erw_type_tostring(typesym1);
+				struct Str typename2 = erw_type_tostring(typesym2);
 				struct Str msg;
 				str_ctorfmt(
 					&msg,
 					"%s expected type '%s', got type '%s'",
 					exprnode->token.type->name,
-					type1,
-					type2
+					typename1.data,
+					typename2.data
 				);
 				erw_error(
 					msg.data, 
@@ -162,6 +153,8 @@ static struct erw_TypeSymbol* erw_getexprtype(
 						: lines[firstnode->token.linenum - 1].len
 				);
 				str_dtor(&msg);
+				str_dtor(&typename2);
+				str_dtor(&typename1);
 			}
 
 			if(exprnode->token.type == erw_TOKENTYPE_OPERATOR_LESS ||
@@ -169,36 +162,24 @@ static struct erw_TypeSymbol* erw_getexprtype(
 				exprnode->token.type == erw_TOKENTYPE_OPERATOR_GREATER ||
 				exprnode->token.type == erw_TOKENTYPE_OPERATOR_GREATEROREQUAL)
 			{
-				struct erw_Token token = {
-					.type = erw_TOKENTYPE_TYPE, 
-					.text = "Bool"
-				};
-				ret = erw_scope_gettype(scope, &token, lines);
-				erw_checknumerical(scope, typesym1, firstnode, lastnode, lines);
+				ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
+				erw_checknumerical(typesym1, firstnode, lastnode, lines);
 			}
 			else if(exprnode->token.type == erw_TOKENTYPE_OPERATOR_EQUAL ||
 				exprnode->token.type == erw_TOKENTYPE_OPERATOR_NOTEQUAL)
 			{
-				struct erw_Token token = {
-					.type = erw_TOKENTYPE_TYPE, 
-					.text = "Bool"
-				};
-				ret = erw_scope_gettype(scope, &token, lines);
+				ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
 			}
 			else if(exprnode->token.type == erw_TOKENTYPE_OPERATOR_OR ||
 				exprnode->token.type == erw_TOKENTYPE_OPERATOR_AND)
 			{
-				struct erw_Token token = {
-					.type = erw_TOKENTYPE_TYPE, 
-					.text = "Bool"
-				};
-				ret = erw_scope_gettype(scope, &token, lines);
-				erw_checkboolean(scope, typesym1, firstnode, lastnode, lines);
+				ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
+				erw_checkboolean(typesym1, firstnode, lastnode, lines);
 			}
 			else
 			{
 				ret = typesym1;
-				erw_checknumerical(scope, ret, firstnode, lastnode, lines);
+				erw_checknumerical(ret, firstnode, lastnode, lines);
 			}
 		}
 		else if(vec_getsize(exprnode->branches) == 1) //Unary operator
@@ -219,50 +200,34 @@ static struct erw_TypeSymbol* erw_getexprtype(
 			ret = erw_getexprtype(scope, exprnode->branches[0], lines);
 			if(exprnode->token.type == erw_TOKENTYPE_OPERATOR_NOT)
 			{
-				erw_checkboolean(scope, ret, firstnode, lastnode, lines);
+				erw_checkboolean(ret, firstnode, lastnode, lines);
 			}
 			else if(exprnode->token.type == erw_TOKENTYPE_OPERATOR_SUB)
 			{
-				erw_checknumerical(scope, ret, firstnode, lastnode, lines);
+				erw_checknumerical(ret, firstnode, lastnode, lines);
 			}
 		}
 		else //Literal/identifier
 		{
 			if(exprnode->token.type == erw_TOKENTYPE_LITERAL_BOOL)
 			{ 
-				struct erw_Token token = {
-					.type = erw_TOKENTYPE_TYPE, 
-					.text = "Bool"
-				};
-				ret = erw_scope_gettype(scope, &token, lines);
+				ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
 			}
 			else if(exprnode->token.type == erw_TOKENTYPE_LITERAL_INT)
 			{
-				struct erw_Token token = {
-					.type = erw_TOKENTYPE_TYPE, 
-					.text = "Int32"
-				};
-				ret = erw_scope_gettype(scope, &token, lines);
+				ret = erw_type_builtins[erw_TYPEBUILTIN_INT32];
 			}
 			else if(exprnode->token.type == erw_TOKENTYPE_LITERAL_FLOAT)
 			{
-				struct erw_Token token = {
-					.type = erw_TOKENTYPE_TYPE, 
-					.text = "Float32"
-				};
-				ret = erw_scope_gettype(scope, &token, lines);
+				ret = erw_type_builtins[erw_TYPEBUILTIN_FLOAT32];
 			}
 			else if(exprnode->token.type == erw_TOKENTYPE_LITERAL_CHAR)
 			{
-				struct erw_Token token = {
-					.type = erw_TOKENTYPE_TYPE, 
-					.text = "Char"
-				};
-				ret = erw_scope_gettype(scope, &token, lines);
+				ret = erw_type_builtins[erw_TYPEBUILTIN_CHAR];
 			}
 			else if(exprnode->token.type == erw_TOKENTYPE_IDENT)
 			{
-				struct erw_VariableSymbol* var = erw_scope_getvariable(
+				struct erw_Variable* var = erw_scope_getvariable(
 					scope, 
 					&exprnode->token,
 					lines
@@ -304,12 +269,12 @@ static struct erw_TypeSymbol* erw_getexprtype(
 			}
 		}
 	}
-	else //Cast/function call
+	else //Function call
 	{ 
 		if(exprnode->descriptor == erw_ASTNODETYPE_FUNC_CALL)
 		{
 			erw_checkfunccall(scope, exprnode, lines);
-			struct erw_FunctionSymbol* func = erw_scope_getfunction(
+			struct erw_Function* func = erw_scope_getfunction(
 				scope, 
 				&exprnode->branches[0]->token,
 				lines
@@ -319,7 +284,7 @@ static struct erw_TypeSymbol* erw_getexprtype(
 			{ 
 				ret = erw_scope_gettype(
 					scope, 
-					&func->node->branches[2]->branches[0]->token,
+					func->node->branches[2]->branches[0],
 					lines
 				);
 			}
@@ -365,7 +330,7 @@ static struct erw_TypeSymbol* erw_getexprtype(
 
 	if(ret) //XXX: Temporary 
 	{
-		ret->used = 1; //NOTE: !!!
+		//ret->used = 1; //NOTE: !!!
 	}
 	return ret;
 }
@@ -373,7 +338,7 @@ static struct erw_TypeSymbol* erw_getexprtype(
 static void erw_checkexprtype(
 	struct erw_Scope* scope,
 	struct erw_ASTNode* exprnode,
-	struct erw_TypeSymbol* type,
+	struct erw_Type* type,
 	struct Str* lines)
 {
 	log_assert(scope, "is NULL");
@@ -381,10 +346,12 @@ static void erw_checkexprtype(
 	log_assert(type, "is NULL");
 	log_assert(lines, "is NULL");
 
-	const char* type1 = type->name;
-	const char* type2 = erw_getexprtype(scope, exprnode, lines)->name;
+	struct Str type1 = erw_type_tostring(type);
+	struct Str type2 = erw_type_tostring(
+		erw_getexprtype(scope, exprnode, lines)
+	);
 
-	if(strcmp(type1, type2))
+	if(strcmp(type1.data, type2.data))
 	{
 		struct erw_ASTNode* firstnode = exprnode;
 		while(vec_getsize(firstnode->branches))
@@ -402,8 +369,8 @@ static void erw_checkexprtype(
 		str_ctorfmt(
 			&msg,
 			"Expected type '%s', got type '%s'",
-			type1,
-			type2
+			type1.data,
+			type2.data
 		);
 
 		erw_error(
@@ -430,7 +397,7 @@ static void erw_checkfunccall(
 	log_assert(lines, "is NULL");
 
 	struct erw_ASTNode* namenode = callnode->branches[0];
-	struct erw_FunctionSymbol* funcnode = erw_scope_getfunction(
+	struct erw_Function* funcnode = erw_scope_getfunction(
 		scope, 
 		&namenode->token, 
 		lines
@@ -467,9 +434,9 @@ static void erw_checkfunccall(
 	{
 		struct erw_ASTNode* argnode = funcargsnode->branches[i];
 		struct erw_ASTNode* argnodetype = argnode->branches[1];
-		struct erw_TypeSymbol* argtype = erw_scope_gettype(
+		struct erw_Type* argtype = erw_scope_gettype(
 			scope, 
-			&argnodetype->token, 
+			argnodetype, 
 			lines
 		);
 
@@ -512,7 +479,7 @@ static void erw_checkblock(
 				erw_TOKENTYPE_KEYWORD_TYPE)
 			{
 				struct erw_ASTNode* typenode = blocknode->branches[i];
-				erw_scope_addtype(scope, typenode, lines, 0);
+				erw_scope_addtypedef(scope, typenode, lines);
 			}
 			else if(blocknode->branches[i]->token.type ==
 					erw_TOKENTYPE_KEYWORD_LET || 
@@ -526,9 +493,9 @@ static void erw_checkblock(
 				if(vec_getsize(valuenode->branches))
 				{ 
 					struct erw_ASTNode* varnodetype = varnode->branches[1];
-					struct erw_TypeSymbol* vartype = erw_scope_gettype(
+					struct erw_Type* vartype = erw_scope_gettype(
 						scope,
-						&varnodetype->token,
+						varnodetype,
 						lines
 					);
 
@@ -546,7 +513,7 @@ static void erw_checkblock(
 				struct erw_ASTNode* ifnode = blocknode->branches[i];
 				struct erw_ASTNode* exprnode = ifnode->branches[0];
 				struct erw_ASTNode* ifblock = ifnode->branches[1];
-				struct erw_TypeSymbol* iftype = erw_getexprtype(
+				struct erw_Type* iftype = erw_getexprtype(
 					scope, 
 					exprnode, 
 					lines
@@ -565,7 +532,7 @@ static void erw_checkblock(
 						vec_getsize(lastnode->branches) - 1];
 				}
 
-				erw_checkboolean(scope, iftype, firstnode, lastnode, lines);
+				erw_checkboolean(iftype, firstnode, lastnode, lines);
 
 				struct erw_Scope* newscope = erw_scope_new(
 					scope, 
@@ -583,7 +550,7 @@ static void erw_checkblock(
 						struct erw_ASTNode* elseifnode = ifnode->branches[j];
 						struct erw_ASTNode* elseifexpr = 
 							elseifnode->branches[0];
-						struct erw_TypeSymbol* elseiftype = erw_getexprtype(
+						struct erw_Type* elseiftype = erw_getexprtype(
 							scope,
 							elseifexpr, 
 							lines
@@ -602,7 +569,6 @@ static void erw_checkblock(
 						}
 
 						erw_checkboolean(
-							scope, 
 							elseiftype, 
 							firstnode, 
 							lastnode, 
@@ -643,7 +609,7 @@ static void erw_checkblock(
 					.text = (char*)scope->funcname,
 					.type = erw_TOKENTYPE_IDENT
 				};
-				struct erw_FunctionSymbol* func = erw_scope_getfunction(
+				struct erw_Function* func = erw_scope_getfunction(
 					scope, 
 					&token,
 					lines
@@ -652,21 +618,22 @@ static void erw_checkblock(
 				if(vec_getsize(func->node->branches[2]->branches)) 
 					//Has return type, i.e not void
 				{
-					struct erw_TypeSymbol* rettype = erw_scope_gettype(
+					struct erw_Type* rettype = erw_scope_gettype(
 						scope, 
-						&func->node->branches[2]->branches[0]->token,
+						func->node->branches[2]->branches[0],
 						lines
 					);
 
 					if(!vec_getsize(retnode->branches)) 
 					{
+						struct Str typename = erw_type_tostring(func->type);
 						struct Str msg;
 						str_ctorfmt(
 							&msg,
 							"Function ('%s') should return a value of type "
 								"'%s'.",
 							func->name,
-							func->type->name
+							typename.data
 						);
 
 						erw_error(
@@ -749,7 +716,7 @@ static void erw_checkblock(
 				struct erw_ASTNode* whilenode = blocknode->branches[i];
 				struct erw_ASTNode* exprnode = whilenode->branches[0];
 				struct erw_ASTNode* whileblock = whilenode->branches[1];
-				struct erw_TypeSymbol* exprtype = erw_getexprtype(
+				struct erw_Type* exprtype = erw_getexprtype(
 					scope, 
 					exprnode, 
 					lines
@@ -768,7 +735,7 @@ static void erw_checkblock(
 						vec_getsize(lastnode->branches) - 1];
 				}
 
-				erw_checkboolean(scope, exprtype, firstnode, lastnode, lines);
+				erw_checkboolean(exprtype, firstnode, lastnode, lines);
 				struct erw_Scope* newscope = erw_scope_new(
 					scope, 
 					scope->funcname,
@@ -796,7 +763,7 @@ static void erw_checkblock(
 				struct erw_ASTNode* assignnode = blocknode->branches[i];
 				struct erw_ASTNode* identnode = assignnode->branches[0];
 				struct erw_ASTNode* exprnode = assignnode->branches[1];
-				struct erw_VariableSymbol* var = erw_scope_getvariable(
+				struct erw_Variable* var = erw_scope_getvariable(
 					scope, 
 					&identnode->token, 
 					lines
@@ -894,7 +861,7 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 
 	for(size_t i = 0; i < vec_getsize(scope->variables); i++)
 	{
-		struct erw_VariableSymbol* var = &scope->variables[i];
+		struct erw_Variable* var = &scope->variables[i];
 		if(!var->used)
 		{
 			struct Str msg;
@@ -913,7 +880,7 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 
 	for(size_t i = 0; i < vec_getsize(scope->functions); i++)
 	{
-		struct erw_FunctionSymbol* func = &scope->functions[i];
+		struct erw_Function* func = &scope->functions[i];
 		if(scope->funcname && strcmp(scope->funcname, func->name)) 
 			//Function does not need to call itself
 		{
@@ -936,18 +903,18 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 
 	for(size_t i = 0; i < vec_getsize(scope->types); i++)
 	{
-		struct erw_TypeSymbol* type = &scope->types[i];
-		if(!type->used && !type->native)
+		struct erw_Type* type = scope->types[i];
+		if(!type->typedef_.used)
 		{
 			struct Str msg;
 			str_ctor(&msg, "Unused type");
 			erw_warning(
 				msg.data,
-				lines[type->node->branches[0]->token.linenum - 1].data,
-				type->node->branches[0]->token.linenum,
-				type->node->branches[0]->token.column,
-				type->node->branches[0]->token.column +
-					vec_getsize(type->node->branches[0]->token.text) - 2
+				lines[type->typedef_.token->linenum - 1].data,
+				type->typedef_.token->linenum,
+				type->typedef_.token->column,
+				type->typedef_.token->column +
+					vec_getsize(type->typedef_.token->text) - 2
 			);
 			str_dtor(&msg);
 		}
@@ -1128,40 +1095,11 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 
 	//NOTE: Line below is temporary named NULL
 	struct erw_Scope* globalscope = erw_scope_new(NULL, NULL, 0, 1); 
-	//XXX: Ugly native types implementation
-	char* types[] = { 
-		"Char",
-		"Bool",
-		"Int8",
-		"Int16",
-		"Int32",
-		"Int64",
-		"UInt8",
-		"UInt16",
-		"UInt32",
-		"UInt64",
-		"Float32",
-		"Float64",
-	};
 
-	struct erw_Token token = {.type = erw_TOKENTYPE_TYPE};
-	struct erw_ASTNode* node;
-	struct erw_Token typetoken = {
-		.type = erw_TOKENTYPE_KEYWORD_TYPE, 
-		.text = "type"
-	};
-
-	for(size_t i = 0; i < sizeof types / sizeof *types; i++)
-		//NOTE: Memory leak here
+	//Add all builtin types
+	for(size_t i = 0; i < erw_TYPEBUILTIN_COUNT; i++)
 	{  
-		node = erw_ast_newfromtoken(typetoken);
-		token.text = types[i];
-		struct erw_ASTNode* tokennode = erw_ast_newfromtoken(token);
-		erw_ast_addbranch(node, tokennode);
-		erw_scope_addtype(globalscope, node, lines, 1);
-
-		//NOTE: Does this work well? seems sketchy
-		erw_ast_dtor(node);
+		vec_pushback(globalscope->types, erw_type_builtins[i]);
 	}
 
 	//TODO: semantic check for main function
@@ -1175,7 +1113,7 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 		else if(ast->branches[i]->token.type == erw_TOKENTYPE_KEYWORD_TYPE)
 		{
 			struct erw_ASTNode* typenode = ast->branches[i];
-			erw_scope_addtype(globalscope, typenode, lines, 0);
+			erw_scope_addtypedef(globalscope, typenode, lines);
 		}
 	}
 
