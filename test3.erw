@@ -1,0 +1,22 @@
+type Player: struct(let x: Int32, mut y: Int32);
+type Result: union(Int32, None);
+type Days: enum(monday, tuesday, wednesday = 3);
+
+func test: (let x: Int32, let y: Int32) -> Int32
+{
+	let x: Int32 = 12;
+	if(x < 20)
+	{
+		print("Yes", 12, true, "Hello World", 3.1415926535897, erik);
+	}
+
+	let slice: []Int32;
+	let arr: [3]Float32;
+	let ref: &Int32;
+	let ref: &[]Int32;
+	let ref: [][3]Int32;
+	let ref: [3][]Int32;
+	let ref: [3][3]Int32;
+	let ref: [][]Int32;
+	let ref: [3][]&Int32;
+}

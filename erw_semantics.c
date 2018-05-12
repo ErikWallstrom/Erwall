@@ -76,6 +76,42 @@ static void erw_checknumerical(
 	}
 }
 
+static void erw_checkint(
+	struct erw_Type* type,
+	struct erw_ASTNode* firstnode,
+	struct erw_ASTNode* lastnode,
+	struct Str* lines)
+{
+	log_assert(type, "is NULL");
+	log_assert(firstnode, "is NULL");
+	log_assert(lastnode, "is NULL");
+	log_assert(lines, "is NULL");
+ 
+	struct erw_Type* base = erw_type_getbase(type);
+	if(type->type != erw_TYPETYPE_TYPEDEF || base->type != erw_TYPETYPE_INT)
+	{
+		struct Str typename = erw_type_tostring(type);
+		struct Str msg;
+		str_ctorfmt(
+			&msg, 
+			"Expected integral type, got type '%s'", 
+			typename.data
+		);
+
+		erw_error(
+			msg.data, 
+			lines[firstnode->token.linenum - 1].data,
+			firstnode->token.linenum, 
+			firstnode->token.column,
+			(lastnode->token.linenum == firstnode->token.linenum) 
+				? (size_t)(lastnode->token.column + vec_getsize(
+						lastnode->token.text)) - 2
+				: lines[firstnode->token.linenum - 1].len
+		);
+		str_dtor(&msg);
+	}
+}
+
 static void erw_checkfunccall(
 	struct erw_Scope* scope,
 	struct erw_ASTNode* callnode,

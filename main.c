@@ -17,14 +17,36 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "erw_generator.h"
+#include "erw_parser.h"
+#include "erw_ast.h"
+
 #include "argparser.h"
 #include "ansicode.h"
 #include "file.h"
 #include "log.h"
-#include <stdlib.h>
 
-void compile(struct Str* code, const char* filename)
+#include <inttypes.h>
+#include <stdlib.h>
+#include <time.h>
+
+static uint64_t getperformancefreq(void)
+{
+	return 1000000000; //10^-9 (nano)
+}
+
+static uint64_t getperformancecount(void)
+{
+	struct timespec ts;
+	timespec_get(&ts, TIME_UTC);
+
+	uint64_t ticks = ts.tv_sec;
+	ticks *= getperformancefreq();
+	ticks += ts.tv_nsec;
+
+	return ticks;
+}
+
+static void compile(struct Str* code, const char* filename)
 { 
 	log_assert(code, "is NULL");
 	log_assert(filename, "is NULL");
@@ -111,6 +133,7 @@ static void onerror(void* udata)
 
 int main(int argc, char* argv[])
 {
+	double timetotal = getperformancecount();
 	struct ArgParserLongOpt options[] = { 
 		{"file", "Which file to compile", 1},
 		{"tokenize", "Output tokens", 0},
@@ -152,14 +175,12 @@ int main(int argc, char* argv[])
 		struct File file;
 		file_ctor(&file, argparser.results[0].arg, FILEMODE_READ);
 
-		double total = 0.0;
-		clock_t start = clock();
+		uint64_t timestart = getperformancecount();
 		Vec(struct Str) lines = getlines(file.content);
 		Vec(struct erw_Token) tokens = erw_tokenize(file.content, lines);
-		clock_t stop = clock();
-		double elapsed = (double)(stop - start) * 1000.0 / CLOCKS_PER_SEC;
-		total += elapsed;
-
+		uint64_t timestop = getperformancecount();
+		double timeelapsed = (timestop - timestart) * 1000.0 
+			/ getperformancefreq();
 		if(argparser.results[1].used) //--tokenize
 		{ 
 			ansicode_printf(&titlecolor, "\nTokens:\n\n");
@@ -172,23 +193,22 @@ int main(int argc, char* argv[])
 				};
 				ansicode_printf(&color, "%s\n", tokens[i].text);
 			}
-			printf("\n(%f ms)\n\n", elapsed);
+			printf("\n(%f ms)\n\n", timeelapsed);
 		}
 
-		start = clock();
+		timestart = getperformancecount();
 		struct erw_ASTNode* ast = erw_parse(tokens, lines);
-		stop = clock();
-		elapsed = (double)(stop - start) * 1000.0 / CLOCKS_PER_SEC;
-		total += elapsed;
-
+		timestop = getperformancecount();
+		timeelapsed = (timestop - timestart) * 1000.0 / getperformancefreq();
 		if(argparser.results[2].used)
 		{ 
 			ansicode_printf(&titlecolor, "\nAbstract Syntax Tree:\n\n");
 			erw_ast_print(ast);
 			putchar('\n');
-			printf("(%f ms)\n\n", elapsed);
+			printf("(%f ms)\n\n", timeelapsed);
 		}
 
+		/*
 		start = clock();
 		struct erw_Scope* scope = erw_checksemantics(ast, lines);
 		stop = clock();
@@ -206,7 +226,6 @@ int main(int argc, char* argv[])
 		//erw_optimize(ast, scope);
 		//erw_interpret(ast, scope);
 
-		/*
 		start = clock();
 		struct Str code = erw_generate(ast, scope);
 		stop = clock();
@@ -234,23 +253,27 @@ int main(int argc, char* argv[])
 		}
 		*/
 
-		printf("\nTotal time: %f ms\n", total);
-
 		//Cleanup
-		erw_scope_dtor(scope);
+		//erw_scope_dtor(scope);
 		erw_ast_dtor(ast);
 		for(size_t i = 0; i < vec_getsize(tokens); i++)
 		{
 			vec_dtor(tokens[i].text);
 		}
-		vec_dtor(tokens);
 
+		vec_dtor(tokens);
 		for(size_t i = 0; i < vec_getsize(lines); i++)
 		{
 			str_dtor(&lines[i]);
 		}
+
 		vec_dtor(lines);
 		file_dtor(&file);
+
+		printf(
+			"\nTotal time: %f ms\n", 
+			(getperformancecount() - timetotal) * 1000.0 / getperformancefreq()
+		);
 	}
 	else
 	{

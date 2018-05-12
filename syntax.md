@@ -16,12 +16,11 @@
 type TypeName: Type;
 
 type EntityID: Int64;
-type Player: struct 
-{
-	mut x: Int32;
-	mut y: Int32;
-	name: Char[];
-};
+type Player: struct(
+	let name: Char[],
+	mut x: Int32,
+	mut y: Int32
+);
 ```
 
 # Variable declaration

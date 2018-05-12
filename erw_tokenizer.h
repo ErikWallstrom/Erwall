@@ -39,6 +39,9 @@ extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ELSE;
 extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_CAST;
 extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_DEFER;
 extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_WHILE;
+extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_STRUCT;
+extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_UNION;
+extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ENUM;
 extern const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DECLR;
 extern const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ADD;
 extern const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_SUB;
@@ -92,5 +95,6 @@ struct erw_Token
 };
 
 Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines);
+void erw_tokens_delete(Vec(struct erw_Token) tokens);
 
 #endif

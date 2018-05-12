@@ -23,36 +23,191 @@
 #include "erw_tokenizer.h"
 #include "vec.h"
 
-struct erw_ASTNodeType 
+struct erw_ASTNodeType
 {
 	const char* name;
 };
 
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_START;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNCPROT;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNCDEF;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_TYPEDECLR;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_VARDECLR;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_BLOCK;
-extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ARRAY;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_IF;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ELSEIF;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ELSE;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_RETURN;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNEXPR;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_BINEXPR;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNCCALL;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_CAST;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_DEFER;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_WHILE;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ENUM;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ENUMMEMBER;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_STRUCT;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNION;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_REFERENCE;
-extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_VAR_VALUE;
-extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNC_CALL;
-extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNC_ARGS;
-extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNC_RETURN;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ARRAY;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_SLICE;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_LITERAL;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_TYPE;
 
 struct erw_ASTNode
 {
 	union
 	{
-		struct erw_Token token;
-		const struct erw_ASTNodeType* descriptor;
+		struct
+		{
+			Vec(struct erw_ASTNode*) children;
+		} start;
+
+		struct
+		{
+			Vec(struct erw_ASTNode*) params;
+			struct erw_Token* name;
+			struct erw_ASTNode* type;
+			int foreign;
+		} funcprot;
+
+		struct
+		{
+			Vec(struct erw_ASTNode*) params;
+			struct erw_Token* name;
+			struct erw_ASTNode* type;
+			struct erw_ASTNode* block;
+		} funcdef;
+
+		struct
+		{
+			struct erw_Token* name;
+			struct erw_ASTNode* type;
+		} typedeclr;
+
+		struct
+		{
+			struct erw_Token* name;
+			struct erw_ASTNode* type;
+			struct erw_ASTNode* value;
+			int mutable;
+		} vardeclr;
+
+		struct
+		{
+			Vec(struct erw_ASTNode*) stmts;
+		} block;
+
+		struct
+		{
+			Vec(struct erw_ASTNode*) elseifs;
+			struct erw_ASTNode* expr;
+			struct erw_ASTNode* block;
+			struct erw_ASTNode* else_;
+		} if_;
+
+		struct
+		{
+			struct erw_ASTNode* expr;
+			struct erw_ASTNode* block;
+		} elseif;
+
+		struct
+		{
+			struct erw_ASTNode* block;
+		} else_;
+
+		struct
+		{
+			struct erw_ASTNode* expr;
+		} return_;
+
+		struct
+		{
+			struct erw_ASTNode* expr;
+			int left; //Used to distinguish reference/dereference
+		} unexpr;
+
+		struct
+		{
+			struct erw_ASTNode* expr1;
+			struct erw_ASTNode* expr2;
+		} binexpr;
+
+		struct
+		{
+			Vec(struct erw_ASTNode*) args;
+			struct erw_Token* name;
+		} funccall;
+
+		struct
+		{
+			struct erw_ASTNode* type;
+			struct erw_ASTNode* expr;
+		} cast;
+
+		struct
+		{
+			struct erw_ASTNode* block;
+		} defer;
+
+		struct
+		{
+			struct erw_ASTNode* expr;
+			struct erw_ASTNode* block;
+		} while_;
+
+		struct
+		{
+			Vec(struct erw_ASTNode*) members;
+		} enum_;
+
+		struct
+		{
+			struct erw_Token* name;
+			struct erw_ASTNode* value;
+		} enummember;
+
+		struct
+		{
+			Vec(struct erw_ASTNode*) members;
+		} struct_;
+
+		struct
+		{
+			Vec(struct erw_ASTNode*) members;
+		} union_;
+
+		struct
+		{
+			struct erw_ASTNode* type;
+		} reference;
+
+		struct
+		{
+			struct erw_ASTNode* type;
+			struct erw_ASTNode* size;
+		} array;
+
+		struct
+		{
+			struct erw_ASTNode* type;
+		} slice;
+
+		struct
+		{
+			struct erw_ASTNode* type;
+		} literal;
 	};
 
-	Vec(struct erw_ASTNode*) branches;
-	struct erw_ASTNode* parent;
-	int istoken;
+	const struct erw_ASTNodeType* type;
+	struct erw_Token* token;
 };
 
-struct erw_ASTNode* erw_ast_newfromtoken(struct erw_Token token);
-struct erw_ASTNode* erw_ast_newfromnodetype(const struct erw_ASTNodeType* type);
-void erw_ast_addbranch(struct erw_ASTNode* root, struct erw_ASTNode* branch);
+struct erw_ASTNode* erw_ast_new(
+	const struct erw_ASTNodeType* type, 
+	struct erw_Token* token
+);
 void erw_ast_print(struct erw_ASTNode* ast);
 void erw_ast_dtor(struct erw_ASTNode* ast);
 

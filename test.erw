@@ -8,35 +8,35 @@
 #]
 
 # Empty types
-type Empty1; 
-type Empty2; 
-type Empty3; 
-type Empty4; 
+type Empty1;
+type Empty2;
+type Empty3;
+type Empty4;
 
-# Typedefs 
+# Typedefs
 type TypeDef1: Char;
-type TypeDef2: Bool; 
-type TypeDef3: Int8; 
-type TypeDef4: Int16; 
+type TypeDef2: Bool;
+type TypeDef3: Int8;
+type TypeDef4: Int16;
 type TypeDef5: Int32;
-type TypeDef6: Int64; 
-type TypeDef7: UInt8; 
-type TypeDef8: UInt16; 
+type TypeDef6: Int64;
+type TypeDef7: UInt8;
+type TypeDef8: UInt16;
 type TypeDef9: UInt32;
-type TypeDef10: UInt64; 
-type TypeDef11: Float32; 
-type TypeDef12: Float64; 
+type TypeDef10: UInt64;
+type TypeDef11: Float32;
+type TypeDef12: Float64;
 
 # Functions
 func function1: ()
 {
 	# Nested functions
 	func nestedfunction1: () {}
-	func nestedfunction2: (let x: TypeDef1) -> Int32 {return 0;} 
-	func nestedfunction3: (let x: TypeDef1, mut y: Int32) -> Int32 {return 0;} 
+	func nestedfunction2: (let x: TypeDef1) -> Int32 {return 0;}
+	func nestedfunction3: (let x: TypeDef1, mut y: Int32) -> Int32 {return 0;}
 
 	func test: () -> Int32
-	{ 
+	{
 		return 12;
 	}
 
@@ -47,7 +47,7 @@ func function1: ()
 
 func main: () -> Int32
 {
-	defer 
+	defer
 	{
 		@puts("Hello World");
 	}
@@ -55,15 +55,11 @@ func main: () -> Int32
 	let xx: Int32 = 12;
 	let y: Float64;
 	let z: Char;
-	let a: Int32[];
-	let b: Int32*;
-	let c: Int32*[]*[][];
-	mut d: Int32*[]*[][];
 
 	type T: Int32;
 	func test: (let x: Int32) -> T
 	{
-		defer 
+		defer
 		{
 			@puts("!!!");
 		}
@@ -97,7 +93,7 @@ func main: () -> Int32
 	x = x + 19;
 	if(x < 20 || x > 20 && x != 12 && x == 12)
 	{
-		
+
 	}
 
 	return 0;

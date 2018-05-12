@@ -24,113 +24,119 @@
 #include <ctype.h>
 
 //Wall of erw_TokenType initializations
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_RETURN = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_RETURN =
 	&(struct erw_TokenType){"Keyword 'return'"};
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_FUNC = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_FUNC =
 	&(struct erw_TokenType){"Keyword 'func'"};
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_LET = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_LET =
 	&(struct erw_TokenType){"Keyword 'let'"};
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_MUT = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_MUT =
 	&(struct erw_TokenType){"Keyword 'mut'"};
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_TYPE = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_TYPE =
 	&(struct erw_TokenType){"Keyword 'type'"};
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_IF = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_IF =
 	&(struct erw_TokenType){"Keyword 'if'"};
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ELSEIF = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ELSEIF =
 	&(struct erw_TokenType){"Keyword 'elseif'"};
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ELSE = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ELSE =
 	&(struct erw_TokenType){"Keyword 'else'"};
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_CAST = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_CAST =
 	&(struct erw_TokenType){"Keyword 'cast'"};
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_DEFER = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_DEFER =
 	&(struct erw_TokenType){"Keyword 'defer'"};
-const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_WHILE = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_WHILE =
 	&(struct erw_TokenType){"Keyword 'while'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DECLR = 
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_STRUCT =
+	&(struct erw_TokenType){"Keyword 'struct'"};
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_UNION =
+	&(struct erw_TokenType){"Keyword 'union'"};
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ENUM = 
+	&(struct erw_TokenType){"Keyword 'enum'"};
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DECLR =
 	&(struct erw_TokenType){"Operator 'Declaration'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ADD = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ADD =
 	&(struct erw_TokenType){"Operator 'Add'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_SUB = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_SUB =
 	&(struct erw_TokenType){"Operator 'Subtract'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_MUL = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_MUL =
 	&(struct erw_TokenType){"Operator 'Multiply'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DIV = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DIV =
 	&(struct erw_TokenType){"Operator 'Divide'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_MOD = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_MOD =
 	&(struct erw_TokenType){"Operator 'Modulo'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_POW = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_POW =
 	&(struct erw_TokenType){"Operator 'Exponentiate'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_RETURN = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_RETURN =
 	&(struct erw_TokenType){"Operator 'Return'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_EQUAL = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_EQUAL =
 	&(struct erw_TokenType){"Operator 'Equal'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_NOT = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_NOT =
 	&(struct erw_TokenType){"Operator 'Not'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_NOTEQUAL = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_NOTEQUAL =
 	&(struct erw_TokenType){"Operator 'Not Equal'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_LESS = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_LESS =
 	&(struct erw_TokenType){"Operator 'Less Than'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_GREATER = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_GREATER =
 	&(struct erw_TokenType){"Operator 'Greater Than'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_LESSOREQUAL = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_LESSOREQUAL =
 	&(struct erw_TokenType){"Operator 'Less Than or Equal'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_GREATEROREQUAL = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_GREATEROREQUAL =
 	&(struct erw_TokenType){"Operator 'Greater Than or Equal'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_AND = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_AND =
 	&(struct erw_TokenType){"Operator 'Logical And'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_OR = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_OR =
 	&(struct erw_TokenType){"Operator 'Logical Or'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ASSIGN = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ASSIGN =
 	&(struct erw_TokenType){"Operator 'Assign'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ADDASSIGN = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ADDASSIGN =
 	&(struct erw_TokenType){"Operator 'Add and Assign'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_SUBASSIGN = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_SUBASSIGN =
 	&(struct erw_TokenType){"Operator 'Subtract and Assign'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_MULASSIGN = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_MULASSIGN =
 	&(struct erw_TokenType){"Operator 'Multiply and Assign'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DIVASSIGN = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DIVASSIGN =
 	&(struct erw_TokenType){"Operator 'Divide and Assign'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_MODASSIGN = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_MODASSIGN =
 	&(struct erw_TokenType){"Operator 'Modulo and Assign'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_POWASSIGN = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_POWASSIGN =
 	&(struct erw_TokenType){"Operator 'Exponentiate and assign'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_BITOR = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_BITOR =
 	&(struct erw_TokenType){"Operator 'Bitwise Or'"};
-const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_BITAND = 
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_BITAND =
 	&(struct erw_TokenType){"Operator 'Bitwise And'"};
-const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_INT = 
+const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_INT =
 	&(struct erw_TokenType){"Literal Int"};
-const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_FLOAT = 
+const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_FLOAT =
 	&(struct erw_TokenType){"Literal Float"};
-const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_STRING = 
+const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_STRING =
 	&(struct erw_TokenType){"Literal String"};
-const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_CHAR = 
+const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_CHAR =
 	&(struct erw_TokenType){"Literal Char"};
-const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_BOOL = 
+const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_BOOL =
 	&(struct erw_TokenType){"Literal Bool"};
-const struct erw_TokenType* const erw_TOKENTYPE_IDENT = 
+const struct erw_TokenType* const erw_TOKENTYPE_IDENT =
 	&(struct erw_TokenType){"Identifier"};
-const struct erw_TokenType* const erw_TOKENTYPE_TYPE = 
+const struct erw_TokenType* const erw_TOKENTYPE_TYPE =
 	&(struct erw_TokenType){"Type"};
-const struct erw_TokenType* const erw_TOKENTYPE_END = 
+const struct erw_TokenType* const erw_TOKENTYPE_END =
 	&(struct erw_TokenType){"End (';')"};
-const struct erw_TokenType* const erw_TOKENTYPE_COMMA = 
+const struct erw_TokenType* const erw_TOKENTYPE_COMMA =
 	&(struct erw_TokenType){"Comma"};
-const struct erw_TokenType* const erw_TOKENTYPE_DOT = 
+const struct erw_TokenType* const erw_TOKENTYPE_DOT =
 	&(struct erw_TokenType){"Dot"};
-const struct erw_TokenType* const erw_TOKENTYPE_LPAREN = 
+const struct erw_TokenType* const erw_TOKENTYPE_LPAREN =
 	&(struct erw_TokenType){"Left Parenthesis"};
-const struct erw_TokenType* const erw_TOKENTYPE_RPAREN = 
+const struct erw_TokenType* const erw_TOKENTYPE_RPAREN =
 	&(struct erw_TokenType){"Right Parenthesis"};
-const struct erw_TokenType* const erw_TOKENTYPE_LCURLY = 
+const struct erw_TokenType* const erw_TOKENTYPE_LCURLY =
 	&(struct erw_TokenType){"Left Curly Bracket"};
-const struct erw_TokenType* const erw_TOKENTYPE_RCURLY = 
+const struct erw_TokenType* const erw_TOKENTYPE_RCURLY =
 	&(struct erw_TokenType){"Right Curly Bracket"};
-const struct erw_TokenType* const erw_TOKENTYPE_LBRACKET = 
+const struct erw_TokenType* const erw_TOKENTYPE_LBRACKET =
 	&(struct erw_TokenType){"Left Bracket"};
-const struct erw_TokenType* const erw_TOKENTYPE_RBRACKET = 
+const struct erw_TokenType* const erw_TOKENTYPE_RBRACKET =
 	&(struct erw_TokenType){"Right Bracket"};
-const struct erw_TokenType* const erw_TOKENTYPE_FOREIGN = 
+const struct erw_TokenType* const erw_TOKENTYPE_FOREIGN =
 	&(struct erw_TokenType){"Foreign function call"};
 
 Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
@@ -209,10 +215,10 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 					);
 
 					erw_error(
-						msg.data, 
-						lines[startline - 1].data, 
-						startline, 
-						startcolumn - 1, 
+						msg.data,
+						lines[startline - 1].data,
+						startline,
+						startcolumn - 1,
 						column + 1
 					);
 					str_dtor(&msg);
@@ -227,10 +233,10 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				);
 
 				erw_error(
-					msg.data, 
-					lines[line - 1].data, 
-					line, 
-					column, 
+					msg.data,
+					lines[line - 1].data,
+					line,
+					column,
 					column + 1
 				);
 				str_dtor(&msg);
@@ -242,8 +248,8 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 					pos++;
 				}
 				while(
-					source[pos] != '\n' && 
-					//source[pos] != ';' && 
+					source[pos] != '\n' &&
+					//source[pos] != ';' &&
 					source[pos] != '\0'
 				);
 			}
@@ -263,7 +269,7 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				column++;
 				vec_pushback(token.text, source[pos]);
 				pos++;
-			} 
+			}
 			while(isalnum(source[pos]) || source[pos] == '_');
 			token.type = erw_TOKENTYPE_TYPE;
 		}
@@ -273,9 +279,9 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				column++;
 				vec_pushback(token.text, source[pos]);
 				pos++;
-			} 
+			}
 			while(isalnum(source[pos]) || source[pos] == '_');
-			
+
 			if(sizeof("let") - 1 == vec_getsize(token.text) &&
 				!memcmp("let", token.text, sizeof("let") - 1))
 			{
@@ -331,6 +337,21 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 			{
 				token.type = erw_TOKENTYPE_KEYWORD_WHILE;
 			}
+			else if(sizeof("struct") - 1 == vec_getsize(token.text) &&
+				!memcmp("struct", token.text, sizeof("struct") - 1))
+			{
+				token.type = erw_TOKENTYPE_KEYWORD_STRUCT;
+			}
+			else if(sizeof("union") - 1 == vec_getsize(token.text) &&
+				!memcmp("union", token.text, sizeof("union") - 1))
+			{
+				token.type = erw_TOKENTYPE_KEYWORD_UNION;
+			}
+			else if(sizeof("enum") - 1 == vec_getsize(token.text) &&
+				!memcmp("enum", token.text, sizeof("enum") - 1))
+			{
+				token.type = erw_TOKENTYPE_KEYWORD_ENUM;
+			}
 			else if(sizeof("true") - 1 == vec_getsize(token.text) &&
 				!memcmp("true", token.text, sizeof("true") - 1))
 			{
@@ -352,7 +373,7 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				column++;
 				vec_pushback(token.text, source[pos]);
 				pos++;
-			} 
+			}
 			while(isdigit(source[pos]));
 
 			if(source[pos] == '.')
@@ -361,7 +382,7 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 					column++;
 					vec_pushback(token.text, source[pos]);
 					pos++;
-				} 
+				}
 				while(isdigit(source[pos]));
 				token.type = erw_TOKENTYPE_LITERAL_FLOAT;
 			}
@@ -596,10 +617,10 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 					column++;
 					vec_pushback(token.text, source[pos]);
 					pos++;
-				} 
+				}
 				while(
-					source[pos] != '"' && 
-					source[pos] != '\n' && 
+					source[pos] != '"' &&
+					source[pos] != '\n' &&
 					source[pos] != '\0'
 				);
 				token.type = erw_TOKENTYPE_LITERAL_STRING;
@@ -613,9 +634,9 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 					);
 
 					erw_error(
-						msg.data, 
-						lines[line - 1].data, 
-						line, 
+						msg.data,
+						lines[line - 1].data,
+						line,
 						startcolumn,
 						column
 					);
@@ -623,17 +644,17 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				}
 				break;
 			}
-			case '\'':
+			case '\'': //TODO: Fix '\n' and etc.
 		 	{
 				size_t startcolumn = column;
 				do {
 					column++;
 					vec_pushback(token.text, source[pos]);
 					pos++;
-				} 
+				}
 				while(
-					source[pos] != '\'' && 
-					source[pos] != '\n' && 
+					source[pos] != '\'' &&
+					source[pos] != '\n' &&
 					source[pos] != '\0'
 				);
 				token.type = erw_TOKENTYPE_LITERAL_CHAR;
@@ -649,10 +670,10 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 					);
 
 					erw_error(
-						msg.data, 
-						lines[line - 1].data, 
-						line, 
-						startcolumn, 
+						msg.data,
+						lines[line - 1].data,
+						line,
+						startcolumn,
 						column
 					);
 					str_dtor(&msg);
@@ -669,11 +690,11 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 						column++;
 						vec_pushback(token.text, source[pos]);
 						pos++;
-					} 
+					}
 					while(isalnum(source[pos]) || source[pos] == '_');
 				}
 				else
-				{ 
+				{
 					struct Str msg;
 					str_ctor(
 						&msg,
@@ -682,10 +703,10 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 					);
 
 					erw_error(
-						msg.data, 
-						lines[line - 1].data, 
-						line, 
-						column - 1, 
+						msg.data,
+						lines[line - 1].data,
+						line,
+						column - 1,
 						column - 1
 					);
 					str_dtor(&msg);
@@ -693,7 +714,7 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 
 				token.type = erw_TOKENTYPE_FOREIGN;
 				goto done; //XXX skip vec_pushback in the end
-			
+
 			default:;
 				struct Str msg;
 				str_ctorfmt(
@@ -703,10 +724,10 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				);
 
 				erw_error(
-					msg.data, 
-					lines[line - 1].data, 
-					line, 
-					column, 
+					msg.data,
+					lines[line - 1].data,
+					line,
+					column,
 					column
 				);
 				str_dtor(&msg);
@@ -723,5 +744,16 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 	}
 
 	return tokens;
+}
+
+void erw_tokens_delete(Vec(struct erw_Token) tokens)
+{
+	log_assert(tokens, "is NULL");
+	for(size_t i = 0; i < vec_getsize(tokens); i++)
+	{
+		vec_dtor(tokens[i].text);
+	}
+
+	vec_dtor(tokens);
 }
 

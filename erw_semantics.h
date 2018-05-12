@@ -23,6 +23,9 @@
 #include "erw_parser.h"
 #include "erw_scope.h"
 
-struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines);
+struct erw_Scope* erw_checksemantics(
+	struct erw_ASTNode* ast, 
+	struct Str* lines
+);
 
 #endif

@@ -20,10 +20,10 @@
 #ifndef ERW_PARSER_H
 #define ERW_PARSER_H
 
-#include "erw_ast.h"
+#include "erw_tokenizer.h"
 
 struct erw_ASTNode* erw_parse(
-	Vec(struct erw_Token) tokens, 
+	Vec(struct erw_Token) tokens,
 	Vec(struct Str) lines
 );
 

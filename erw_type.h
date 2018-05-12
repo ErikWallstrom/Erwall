@@ -20,11 +20,9 @@
 #ifndef ERW_TYPE_H
 #define ERW_TYPE_H
 
-#include "erw_ast.h"
-#include "str.h"
+#include "vec.h"
 
-
-enum erw_TypeBuiltin
+enum erw_TypeBuiltIn
 {
 	erw_TYPEBUILTIN_CHAR,
 	erw_TYPEBUILTIN_BOOL,
@@ -43,83 +41,95 @@ enum erw_TypeBuiltin
 
 extern struct erw_Type* const erw_type_builtins[];
 
-enum erw_TypeType
+enum erw_TypeInfo
 {
-	erw_TYPETYPE_REFERENCE,
-	erw_TYPETYPE_TYPEDEF,
-	erw_TYPETYPE_STRUCT,
-	erw_TYPETYPE_ARRAY,
-	erw_TYPETYPE_UNION,
-	erw_TYPETYPE_ENUM,
-	erw_TYPETYPE_FUNC,
-	erw_TYPETYPE_FLOAT,
-	erw_TYPETYPE_CHAR,
-	erw_TYPETYPE_BOOL,
-	erw_TYPETYPE_INT,
+	erw_TYPEINFO_REFERENCE,
+	erw_TYPEINFO_STRUCT,
+	erw_TYPEINFO_NAMED,
+	erw_TYPEINFO_ARRAY,
+	erw_TYPEINFO_UNION,
+	erw_TYPEINFO_ENUM,
+	erw_TYPEINFO_FUNC,
+	erw_TYPEINFO_FLOAT,
+	erw_TYPEINFO_CHAR,
+	erw_TYPEINFO_BOOL,
+	erw_TYPEINFO_INT,
+	erw_TYPEINFO_COUNT,
 };
 
 struct erw_Type
 {
 	union
 	{
+		size_t size;
 		struct
 		{
+			size_t size;
 			struct erw_Type* type;
 			int mutable;
-		} reference_;
+		} reference;
 
 		struct
 		{
+			size_t size;
 			struct erw_Type* type;
 			const char* name;
-			struct erw_Token* token;
 			int used;
-		} typedef_;
+		} named;
 
 		struct
 		{
-			Vec(struct erw_Type*) members;
+			size_t size;
+			Vec(struct
+				{
+					struct erw_Type* type;
+					const char* name;
+				}
+			) members;
 		} struct_;
 
 		struct
 		{
+			size_t size;
 			struct erw_Type* type;
 			int mutable;
-		} array_;
+		} array;
 
 		struct
 		{
+			size_t size;
 			Vec(struct erw_Type*) members;
 		} union_;
 
 		struct
 		{
+			size_t size;
+			Vec(const char*) members;
+		} enum_;
+
+		struct
+		{
+			size_t size;
 			struct erw_Type* type;
 			Vec(struct erw_Type*) params;
-		} func_;
+		} func;
 
-		struct 
+		struct
 		{
 			size_t size;
 		} float_;
 
-		struct {} char_;
-
-		struct {} bool_;
-
-		struct 
+		struct
 		{
 			size_t size;
 			int signed_;
 		} int_;
 	};
 
-	enum erw_TypeType type;
+	enum erw_TypeInfo info;
 };
 
-struct erw_Type* erw_type_newfromastnode(struct erw_ASTNode* node); 
-struct Str erw_type_tostring(struct erw_Type* self);
-int erw_type_compare(struct erw_Type* t1, struct erw_Type* t2);
-struct erw_Type* erw_type_getbase(struct erw_Type* type);
+struct erw_Type* erw_type_new(enum erw_TypeInfo info);
+void erw_type_dtor(struct erw_Type* self);
 
 #endif
