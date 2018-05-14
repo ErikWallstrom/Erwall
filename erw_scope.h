@@ -22,24 +22,26 @@
 
 #include "erw_tokenizer.h"
 #include "erw_type.h"
+#include "erw_ast.h"
 
-struct erw_Function
+struct erw_FuncDeclr
 {
-	struct erw_Type* type;
 	struct erw_ASTNode* node;
-	const char* name;
+	struct erw_Type* type;
 	int used;
 };
 
-struct erw_Variable
+struct erw_VarDeclr //Should this contain isconst
 {
-	struct erw_Type* type;
 	struct erw_ASTNode* node;
-	const char* name;
-	int hasvalue;
-	int isconst;
-	int ismut;
+	struct erw_Type* type;
 	int used;
+};
+
+struct erw_TypeDeclr
+{
+	struct erw_ASTNode* node;
+	struct erw_Type* type;
 };
 
 struct erw_Finalizer //Is this really a good name?
@@ -50,9 +52,9 @@ struct erw_Finalizer //Is this really a good name?
 
 struct erw_Scope
 {
-	Vec(struct erw_Function) functions;
-	Vec(struct erw_Variable) variables;
-	Vec(struct erw_Type*) types;
+	Vec(struct erw_FuncDeclr) functions;
+	Vec(struct erw_VarDeclr) variables;
+	Vec(struct erw_TypeDeclr) types;
 	Vec(struct erw_Scope*) children;
 	Vec(struct erw_Finalizer) finalizers;
 	struct erw_Scope* parent;
@@ -67,32 +69,37 @@ struct erw_Scope* erw_scope_new(
 	size_t index,
 	int isfunction
 );
-struct erw_Variable* erw_scope_getvariable(
+struct erw_VarDeclr* erw_scope_getvar(
 	struct erw_Scope* self, 
 	struct erw_Token* token,
 	struct Str* lines
 );
-struct erw_Function* erw_scope_getfunction(
+struct erw_FuncDeclr* erw_scope_getfunc(
 	struct erw_Scope* self, 
 	struct erw_Token* token,
 	struct Str* lines
 );
 struct erw_Type* erw_scope_gettype(
 	struct erw_Scope* self, 
-	struct erw_ASTNode* node,
+	struct erw_Token* token,
 	struct Str* lines
 );
-void erw_scope_addvariable(
+struct erw_Type* erw_scope_createtype(
 	struct erw_Scope* self, 
 	struct erw_ASTNode* node,
 	struct Str* lines
 );
-void erw_scope_addfunction(
+void erw_scope_addvardeclr(
 	struct erw_Scope* self, 
 	struct erw_ASTNode* node,
 	struct Str* lines
 );
-void erw_scope_addtypedef(
+void erw_scope_addfuncdeclr(
+	struct erw_Scope* self, 
+	struct erw_ASTNode* node,
+	struct Str* lines
+);
+void erw_scope_addtypedeclr(
 	struct erw_Scope* self, 
 	struct erw_ASTNode* node,
 	struct Str* lines

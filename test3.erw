@@ -1,22 +1,21 @@
-type Player: struct(let x: Int32, mut y: Int32);
-type Result: union(Int32, None);
-type Days: enum(monday, tuesday, wednesday = 3);
+func print: ()
+{
+	type Lol: Int32;
+	type Lmao: Lol;
+	type Xd;
+}
 
-func test: (let x: Int32, let y: Int32) -> Int32
+func test: (let a: Int32, let b: Int32) -> Int32
 {
 	let x: Int32 = 12;
+	let y: &Int32 = &x;
 	if(x < 20)
 	{
-		print("Yes", 12, true, "Hello World", 3.1415926535897, erik);
+		print();
+		return 2;
 	}
-
-	let slice: []Int32;
-	let arr: [3]Float32;
-	let ref: &Int32;
-	let ref: &[]Int32;
-	let ref: [][3]Int32;
-	let ref: [3][]Int32;
-	let ref: [3][3]Int32;
-	let ref: [][]Int32;
-	let ref: [3][]&Int32;
+	else
+	{
+		return 1;
+	}
 }

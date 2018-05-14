@@ -38,6 +38,7 @@ extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_IF;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ELSEIF;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ELSE;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_RETURN;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ASSIGNMENT;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNEXPR;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_BINEXPR;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNCCALL;
@@ -124,6 +125,12 @@ struct erw_ASTNode
 
 		struct
 		{
+			struct erw_ASTNode* assignee;
+			struct erw_ASTNode* expr;
+		} assignment;
+
+		struct
+		{
 			struct erw_ASTNode* expr;
 			int left; //Used to distinguish reference/dereference
 		} unexpr;
@@ -193,11 +200,6 @@ struct erw_ASTNode
 		{
 			struct erw_ASTNode* type;
 		} slice;
-
-		struct
-		{
-			struct erw_ASTNode* type;
-		} literal;
 	};
 
 	const struct erw_ASTNodeType* type;

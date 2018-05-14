@@ -17,8 +17,7 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "erw_parser.h"
-#include "erw_ast.h"
+#include "erw_semantics.h"
 
 #include "argparser.h"
 #include "ansicode.h"
@@ -208,21 +207,19 @@ int main(int argc, char* argv[])
 			printf("(%f ms)\n\n", timeelapsed);
 		}
 
-		/*
-		start = clock();
+		timestart = getperformancecount();
 		struct erw_Scope* scope = erw_checksemantics(ast, lines);
-		stop = clock();
-		elapsed = (double)(stop - start) * 1000.0 / CLOCKS_PER_SEC;
-		total += elapsed;
-
+		timestop = getperformancecount();
+		timeelapsed = (timestop - timestart) * 1000.0 / getperformancefreq();
 		if(argparser.results[3].used)
 		{ 
 			ansicode_printf(&titlecolor, "\nSymbol Table:\n\n");
 			erw_scope_print(scope);
 			putchar('\n');
-			printf("(%f ms)\n\n", elapsed);
+			printf("(%f ms)\n\n", timeelapsed);
 		}
 
+		/*
 		//erw_optimize(ast, scope);
 		//erw_interpret(ast, scope);
 
@@ -254,7 +251,7 @@ int main(int argc, char* argv[])
 		*/
 
 		//Cleanup
-		//erw_scope_dtor(scope);
+		erw_scope_dtor(scope);
 		erw_ast_dtor(ast);
 		for(size_t i = 0; i < vec_getsize(tokens); i++)
 		{

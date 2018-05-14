@@ -131,7 +131,7 @@ static struct erw_ASTNode* erw_parse_factor(struct erw_Parser* parser)
 			);
 
 			node->unexpr.expr = identnode;
-			node->unexpr.left = 1;
+			node->unexpr.left = 0;
 		}
 		else
 		{ 
@@ -171,7 +171,7 @@ static struct erw_ASTNode* erw_parse_factor(struct erw_Parser* parser)
 			erw_ASTNODETYPE_LITERAL, //Is this really correct?
 			erw_parser_expect(parser, erw_TOKENTYPE_IDENT)
 		);
-		node->unexpr.left = 0;
+		node->unexpr.left = 1;
 	}
 	else
 	{ 
@@ -353,6 +353,7 @@ static struct erw_ASTNode* erw_parse_funccall(struct erw_Parser* parser)
 {
 	struct erw_ASTNode* node = erw_ast_new(erw_ASTNODETYPE_FUNCCALL, NULL);
 	node->funccall.name = erw_parser_expect(parser, erw_TOKENTYPE_IDENT);
+	node->token = node->funccall.name;
 	
 	erw_parser_expect(parser, erw_TOKENTYPE_LPAREN);
 	int first = 1;
@@ -447,11 +448,7 @@ static struct erw_ASTNode* erw_parse_type(struct erw_Parser* parser)
 		}
 		else
 		{
-			if(node)
-			{
-				node->reference.type = tmpnode;
-			}
-
+			node->reference.type = tmpnode;
 			node = tmpnode;
 		}
 	}
@@ -741,19 +738,20 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 				|| parser->tokens[parser->current + 1].type 
 					== erw_TOKENTYPE_OPERATOR_MODASSIGN)
 			{
-				struct erw_ASTNode* identnode = erw_ast_new(
+				//TODO: Add support for dereferencing
+				struct erw_ASTNode* identnode = erw_ast_new( 
 					erw_ASTNODETYPE_LITERAL,
 					erw_parser_expect(parser, erw_TOKENTYPE_IDENT)
 				);
 
 				struct erw_ASTNode* assignnode = erw_ast_new(
-					erw_ASTNODETYPE_BINEXPR,
+					erw_ASTNODETYPE_ASSIGNMENT,
 					&parser->tokens[parser->current]
 				);
 				parser->current++;
 
-				assignnode->binexpr.expr1 = identnode;
-				assignnode->binexpr.expr2 = erw_parse_expr(parser);
+				assignnode->assignment.assignee = identnode;
+				assignnode->assignment.expr = erw_parse_expr(parser);
 				vec_pushback(node->block.stmts, assignnode);
 			}
 			else

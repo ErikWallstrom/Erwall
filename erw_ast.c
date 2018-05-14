@@ -22,6 +22,8 @@ const struct erw_ASTNodeType* const erw_ASTNODETYPE_ELSE =
 	&(struct erw_ASTNodeType){"Else Statement"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_RETURN =
 	&(struct erw_ASTNodeType){"Return Statement"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_ASSIGNMENT =
+	&(struct erw_ASTNodeType){"Assignment"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNEXPR =
 	&(struct erw_ASTNodeType){"Unary Expression"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_BINEXPR =
@@ -106,6 +108,17 @@ struct erw_ASTNode* erw_ast_new(
 	return self;
 }
 
+static void erw_ast_printinternaltoken(struct erw_Token* token, size_t level)
+{
+	for(size_t i = 0; i < level; i++)
+	{
+		printf("    ");
+		printf("│");
+	}
+	
+	printf("─ %s (%s)\n", token->type->name, token->text);
+}
+
 static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 {
 	if(ast != NULL)
@@ -139,6 +152,7 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 				erw_ast_printinternal(ast->funcprot.params[i], level + 1);
 			}
 
+			erw_ast_printinternaltoken(ast->funcprot.name, level + 1);
 			erw_ast_printinternal(ast->funcprot.type, level + 1);
 		}
 		else if(ast->type == erw_ASTNODETYPE_FUNCDEF)
@@ -148,15 +162,18 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 				erw_ast_printinternal(ast->funcdef.params[i], level + 1);
 			}
 
+			erw_ast_printinternaltoken(ast->funcdef.name, level + 1);
 			erw_ast_printinternal(ast->funcdef.type, level + 1);
 			erw_ast_printinternal(ast->funcdef.block, level + 1);
 		}
 		else if(ast->type == erw_ASTNODETYPE_TYPEDECLR)
 		{
+			erw_ast_printinternaltoken(ast->typedeclr.name, level + 1);
 			erw_ast_printinternal(ast->typedeclr.type, level + 1);
 		}
 		else if(ast->type == erw_ASTNODETYPE_VARDECLR)
 		{
+			erw_ast_printinternaltoken(ast->vardeclr.name, level + 1);
 			erw_ast_printinternal(ast->vardeclr.type, level + 1);
 			erw_ast_printinternal(ast->vardeclr.value, level + 1);
 		}
@@ -191,6 +208,11 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 		{
 			erw_ast_printinternal(ast->return_.expr, level + 1);
 		}
+		else if(ast->type == erw_ASTNODETYPE_ASSIGNMENT)
+		{
+			erw_ast_printinternal(ast->assignment.assignee, level + 1);
+			erw_ast_printinternal(ast->assignment.expr, level + 1);
+		}
 		else if(ast->type == erw_ASTNODETYPE_UNEXPR)
 		{
 			erw_ast_printinternal(ast->unexpr.expr, level + 1);
@@ -202,6 +224,7 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 		}
 		else if(ast->type == erw_ASTNODETYPE_FUNCCALL)
 		{
+			erw_ast_printinternaltoken(ast->funccall.name, level + 1);
 			for(size_t i = 0; i < vec_getsize(ast->funccall.args); i++)
 			{
 				erw_ast_printinternal(ast->funccall.args[i], level + 1);
@@ -226,6 +249,7 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 		}
 		else if(ast->type == erw_ASTNODETYPE_ENUMMEMBER)
 		{
+			erw_ast_printinternaltoken(ast->enummember.name, level + 1);
 			erw_ast_printinternal(ast->enummember.value, level + 1);
 		}
 		else if(ast->type == erw_ASTNODETYPE_STRUCT)
@@ -251,15 +275,12 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 			erw_ast_printinternal(ast->array.type, level + 1);
 			erw_ast_printinternal(ast->array.size, level + 1);
 		}
-		else if(ast->type == erw_ASTNODETYPE_LITERAL)
-		{
-			erw_ast_printinternal(ast->literal.type, level + 1);
-		}
 		else if(ast->type == erw_ASTNODETYPE_SLICE)
 		{
 			erw_ast_printinternal(ast->slice.type, level + 1);
 		}
 		else if(ast->type == erw_ASTNODETYPE_TYPE) { }
+		else if(ast->type == erw_ASTNODETYPE_LITERAL) { }
 		else
 		{
 			log_assert(0, "This shouldn't happen (%s)'", ast->type->name);
@@ -352,6 +373,11 @@ void erw_ast_dtor(struct erw_ASTNode* ast)
 	{
 		erw_ast_dtor(ast->return_.expr);
 	}
+	else if(ast->type == erw_ASTNODETYPE_ASSIGNMENT)
+	{
+		erw_ast_dtor(ast->assignment.assignee);
+		erw_ast_dtor(ast->assignment.expr);
+	}
 	else if(ast->type == erw_ASTNODETYPE_UNEXPR)
 	{
 		erw_ast_dtor(ast->unexpr.expr);
@@ -420,15 +446,12 @@ void erw_ast_dtor(struct erw_ASTNode* ast)
 		erw_ast_dtor(ast->array.type);
 		erw_ast_dtor(ast->array.size);
 	}
-	else if(ast->type == erw_ASTNODETYPE_LITERAL)
-	{
-		erw_ast_dtor(ast->literal.type);
-	}
 	else if(ast->type == erw_ASTNODETYPE_SLICE)
 	{
 		erw_ast_dtor(ast->slice.type);
 	}
 	else if(ast->type == erw_ASTNODETYPE_TYPE) { }
+	else if(ast->type == erw_ASTNODETYPE_LITERAL) { }
 	else
 	{
 		log_assert(0, "This shouldn't happen (%s)'", ast->type->name);

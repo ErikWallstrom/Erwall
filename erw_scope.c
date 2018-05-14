@@ -24,7 +24,7 @@
 
 #include <stdlib.h>
 
-static struct erw_Variable* erw_scope_findvariable(
+static struct erw_VarDeclr* erw_scope_findvar(
 	struct erw_Scope* self, 
 	const char* name)
 {
@@ -36,7 +36,7 @@ static struct erw_Variable* erw_scope_findvariable(
 	{
 		for(size_t i = 0; i < vec_getsize(scope->variables); i++)
 		{
-			if(!strcmp(scope->variables[i].name, name))
+			if(!strcmp(scope->variables[i].node->vardeclr.name->text, name))
 			{
 				return &scope->variables[i];
 			}
@@ -59,7 +59,7 @@ static struct erw_Variable* erw_scope_findvariable(
 	return NULL;
 }
 
-static struct erw_Function* erw_scope_findfunction(
+static struct erw_FuncDeclr* erw_scope_findfunc(
 	struct erw_Scope* self, 
 	const char* name)
 {
@@ -71,7 +71,7 @@ static struct erw_Function* erw_scope_findfunction(
 	{
 		for(size_t i = 0; i < vec_getsize(scope->functions); i++)
 		{
-			if(!strcmp(scope->functions[i].name, name))
+			if(!strcmp(scope->functions[i].node->funcdef.name->text, name))
 			{
 				return &scope->functions[i];
 			}
@@ -83,7 +83,7 @@ static struct erw_Function* erw_scope_findfunction(
 	return NULL;
 }
 
-static struct erw_Type* erw_scope_findtype(
+static struct erw_TypeDeclr* erw_scope_findtype(
 	struct erw_Scope* self, 
 	const char* name)
 {
@@ -95,9 +95,9 @@ static struct erw_Type* erw_scope_findtype(
 	{
 		for(size_t i = 0; i < vec_getsize(scope->types); i++)
 		{
-			if(!strcmp(scope->types[i]->typedef_.name, name))
+			if(!strcmp(scope->types[i].type->named.name, name))
 			{
-				return scope->types[i];
+				return &scope->types[i];
 			}
 		}
 
@@ -119,14 +119,14 @@ struct erw_Scope* erw_scope_new(
 		log_error("malloc failed in <%s>", __func__);
 	}
 
-	self->functions = vec_ctor(struct erw_Function, 0);
-	self->variables = vec_ctor(struct erw_Variable, 0);
-	self->types = vec_ctor(struct erw_Type*, 0);
+	self->functions = vec_ctor(struct erw_FuncDeclr, 0);
+	self->variables = vec_ctor(struct erw_VarDeclr, 0);
+	self->types = vec_ctor(struct erw_TypeDeclr, 0);
 	self->children = vec_ctor(struct erw_Scope*, 0);
 	self->finalizers = vec_ctor(struct erw_Finalizer, 0);
+	self->index = index;
 	self->parent = parent;
 	self->isfunction = isfunction;
-	self->index = index;
 	self->funcname = funcname;
 
 	if(parent)
@@ -137,16 +137,21 @@ struct erw_Scope* erw_scope_new(
 	return self;
 }
 
-struct erw_Variable* erw_scope_getvariable(
+struct erw_VarDeclr* erw_scope_getvar(
 	struct erw_Scope* self, 
 	struct erw_Token* token,
 	struct Str* lines)
 {
 	log_assert(self, "is NULL");
 	log_assert(token, "is NULL");
+	log_assert(
+		token->type == erw_TOKENTYPE_IDENT, 
+		"invalid type (%s)", 
+		token->type->name
+	);
 	log_assert(lines, "is NULL");
 
-	struct erw_Variable* ret = erw_scope_findvariable(self, token->text);
+	struct erw_VarDeclr* ret = erw_scope_findvar(self, token->text);
 	if(!ret)
 	{ 
 		struct Str msg;
@@ -168,16 +173,21 @@ struct erw_Variable* erw_scope_getvariable(
 	return ret;
 }
 
-struct erw_Function* erw_scope_getfunction(
+struct erw_FuncDeclr* erw_scope_getfunc(
 	struct erw_Scope* self, 
 	struct erw_Token* token,
 	struct Str* lines)
 {
 	log_assert(self, "is NULL");
 	log_assert(token, "is NULL");
+	log_assert(
+		token->type == erw_TOKENTYPE_IDENT, 
+		"invalid type (%s)", 
+		token->type->name
+	);
 	log_assert(lines, "is NULL");
 
-	struct erw_Function* ret = erw_scope_findfunction(self, token->text);
+	struct erw_FuncDeclr* ret = erw_scope_findfunc(self, token->text);
 	if(!ret)
 	{ 
 		struct Str msg;
@@ -197,294 +207,401 @@ struct erw_Function* erw_scope_getfunction(
 
 struct erw_Type* erw_scope_gettype(
 	struct erw_Scope* self, 
-	struct erw_ASTNode* node,
+	struct erw_Token* token,
 	struct Str* lines)
 {
 	log_assert(self, "is NULL");
-	log_assert(node, "is NULL");
+	log_assert(token, "is NULL");
+	log_assert(
+		token->type == erw_TOKENTYPE_TYPE, 
+		"invalid type (%s)", 
+		token->type->name
+	);
 	log_assert(lines, "is NULL");
 
-	struct erw_Type* type = erw_type_newfromastnode(node);
-	struct erw_Type* basetype = erw_type_getbase(type);
-
-	if(basetype->type == erw_TYPETYPE_TYPEDEF)
-	{
-		struct erw_Type* foundtype = erw_scope_findtype(
-			self, 
-			basetype->typedef_.name
+	struct erw_TypeDeclr* ret = erw_scope_findtype(self, token->text);
+	if(!ret)
+	{ 
+		struct Str msg;
+		str_ctor(&msg, "Undefined type");
+		erw_error(
+			msg.data, 
+			lines[token->linenum - 1].data, 
+			token->linenum, 
+			token->column,
+			token->column + vec_getsize(token->text) - 2
 		);
-
-		if(!foundtype)
-		{
-			struct Str msg;
-			str_ctor(&msg, "Undefined type");
-			erw_error(
-				msg.data, 
-				lines[basetype->typedef_.token->linenum - 1].data, 
-				basetype->typedef_.token->linenum, 
-				basetype->typedef_.token->column,
-				basetype->typedef_.token->column + 
-					vec_getsize(basetype->typedef_.token->text) - 2
-			);
-			str_dtor(&msg);
-		}
-
-		basetype->typedef_.type = foundtype->typedef_.type;
+		str_dtor(&msg);
 	}
 
-	return type;
+	return ret->type;
 }
 
-void erw_scope_addvariable(
+struct erw_Type* erw_scope_createtype(
 	struct erw_Scope* self, 
 	struct erw_ASTNode* node,
 	struct Str* lines)
 {
 	log_assert(self, "is NULL");
 	log_assert(node, "is NULL");
-	log_assert(lines, "is NULL");
 
-	struct erw_Variable* var = erw_scope_findvariable(
-		self, 
-		node->branches[0]->token.text
-	);
-
-	if(var)
+	struct erw_Type* root = NULL;
+	struct erw_Type* type = NULL;
+	int done = 0;
+	while(!done)
 	{
-		struct Str msg;
-		str_ctorfmt(
-			&msg,
-			"Redefinition of variable ('%s') declared at line %zu, column %zu", 
-			node->branches[0]->token.text,
-			var->node->branches[0]->token.linenum,
-			var->node->branches[0]->token.column
-		);
-
-		erw_error(
-			msg.data, 
-			lines[node->branches[0]->token.linenum - 1].data, 
-			node->branches[0]->token.linenum, 
-			node->branches[0]->token.column,
-			node->branches[0]->token.column + 
-				vec_getsize(node->branches[0]->token.text) - 2
-		);
-		str_dtor(&msg);
-	}
-
-	struct erw_Function* func = erw_scope_findfunction(
-		self, 
-		node->branches[0]->token.text
-	);
-
-	if(func)
-	{
-		struct Str msg;
-		str_ctorfmt(
-			&msg,
-			"Redefinition of variable ('%s') declared at line %zu, column %zu", 
-			node->branches[0]->token.text,
-			func->node->branches[0]->token.linenum,
-			func->node->branches[0]->token.column
-		);
-
-		erw_error(
-			msg.data, 
-			lines[node->branches[0]->token.linenum - 1].data, 
-			node->branches[0]->token.linenum, 
-			node->branches[0]->token.column,
-			node->branches[0]->token.column + 
-				vec_getsize(node->branches[0]->token.text) - 2
-		);
-		str_dtor(&msg);
-	}
-
-	struct erw_Variable symbol;
-	if(node->token.type == erw_TOKENTYPE_KEYWORD_LET)
-	{
-		symbol.ismut = 0;
-	}
-	else
-	{
-		symbol.ismut = 1;
-	}
-
-	if(vec_getsize(node->branches) == 3) //Not parameter
-	{
-		if(vec_getsize(node->branches[2]->branches))
+		struct erw_Type* tmptype = NULL;
+		if(node->type == erw_ASTNODETYPE_TYPE)
 		{
-			if(!symbol.ismut)
-			{
-				symbol.isconst = 1;
-			}
-			else
-			{
-				symbol.isconst = 0;
-			}
-
-			symbol.hasvalue = 1;
+			tmptype = erw_scope_gettype(self, node->token, lines);
+			tmptype->parent = type;
+			done = 1; //Break loop
+		}
+		else if(node->type == erw_ASTNODETYPE_REFERENCE)
+		{
+			tmptype = erw_type_new(erw_TYPEINFO_REFERENCE, type);
+			tmptype->reference.mutable = 0; //NOTE: Temporary
+			tmptype->reference.size = sizeof(void*); //NOTE: Temporary
+			tmptype->parent = type;
+		}
+		else if(node->type == erw_ASTNODETYPE_ARRAY)
+		{
+			tmptype = erw_type_new(erw_TYPEINFO_ARRAY, type);
+			tmptype->array.mutable = 0; //NOTE: Temporary
+			tmptype->array.elements = atol(node->array.size->token->text); 
+			tmptype->parent = type;
+			//NOTE: No error checking
+		}
+		else if(node->type == erw_ASTNODETYPE_SLICE)
+		{
+			tmptype = erw_type_new(erw_TYPEINFO_SLICE, type);
+			tmptype->slice.mutable = 0; //NOTE: Temporary
+			tmptype->slice.size = sizeof(void*); //NOTE: Temporary
+			tmptype->parent = type;
 		}
 		else
 		{
-			symbol.isconst = 0;
-			symbol.hasvalue = 0;
+			log_assert(0, "this should not happen (%s)", node->type->name);
+		}
+
+		node = node->reference.type;
+		if(!root)
+		{
+			type = tmptype;
+			root = type;
+		}
+		else
+		{
+			if(type->info == erw_TYPEINFO_ARRAY 
+				&& tmptype->info != erw_TYPEINFO_ARRAY)
+			{
+				type->array.size = type->array.elements * tmptype->size;
+				struct erw_Type* lasttype = type->parent;
+				while(lasttype->info == erw_TYPEINFO_ARRAY)
+				{
+					lasttype->array.size = lasttype->array.elements 
+						* lasttype->size;
+					lasttype = lasttype->parent;
+				}
+			}
+
+			type->reference.type = tmptype;
+			type = tmptype;
 		}
 	}
-	else
-	{
-		symbol.isconst = 0;
-		symbol.hasvalue = 1;
-	}
 
-	struct erw_ASTNode* typenode = node->branches[1];
-
-	symbol.type = erw_scope_gettype(self, typenode, lines);
-	symbol.name = node->branches[0]->token.text;
-	symbol.node = node;
-	symbol.used = 0;
-
-	vec_pushback(self->variables, symbol);
+	return root;
 }
 
-void erw_scope_addfunction(
+void erw_scope_addvardeclr(
 	struct erw_Scope* self, 
 	struct erw_ASTNode* node,
 	struct Str* lines)
 {
 	log_assert(self, "is NULL");
 	log_assert(node, "is NULL");
+	log_assert(
+		node->type == erw_ASTNODETYPE_VARDECLR, 
+		"invalid type (%s)", 
+		node->type->name
+	);
 	log_assert(lines, "is NULL");
 
-	struct erw_Function* func = erw_scope_findfunction(
+	struct erw_VarDeclr* var = erw_scope_findvar(
 		self, 
-		node->branches[0]->token.text
+		node->vardeclr.name->text
 	);
+	if(var)
+	{
+		struct Str msg;
+		str_ctorfmt(
+			&msg,
+			"Redefinition of variable ('%s') declared at line %zu, column %zu", 
+			node->vardeclr.name->text,
+			var->node->vardeclr.name->linenum,
+			var->node->vardeclr.name->column
+		);
 
+		erw_error(
+			msg.data, 
+			lines[node->vardeclr.name->linenum - 1].data, 
+			node->vardeclr.name->linenum, 
+			node->vardeclr.name->column,
+			node->vardeclr.name->column + 
+				vec_getsize(node->vardeclr.name->text) - 2
+		);
+		str_dtor(&msg);
+	}
+
+	struct erw_FuncDeclr* func = erw_scope_findfunc(
+		self, 
+		node->vardeclr.name->text
+	);
+	if(func)
+	{
+		struct Str msg;
+		str_ctorfmt(
+			&msg,
+			"Redefinition of variable ('%s') declared at line %zu, column %zu", 
+			node->vardeclr.name->text,
+			func->node->funcdef.name->linenum,
+			func->node->funcdef.name->column
+		);
+
+		erw_error(
+			msg.data, 
+			lines[node->vardeclr.name->linenum - 1].data, 
+			node->vardeclr.name->linenum, 
+			node->vardeclr.name->column,
+			node->vardeclr.name->column + 
+				vec_getsize(node->vardeclr.name->text) - 2
+		);
+		str_dtor(&msg);
+	}
+
+	struct erw_VarDeclr symbol;
+	symbol.type = erw_scope_createtype(self, node->vardeclr.type, lines);
+	symbol.node = node;
+	symbol.used = 0;
+	vec_pushback(self->variables, symbol);
+}
+
+void erw_scope_addfuncdeclr(
+	struct erw_Scope* self, 
+	struct erw_ASTNode* node,
+	struct Str* lines)
+{
+	log_assert(self, "is NULL");
+	log_assert(node, "is NULL");
+	log_assert(
+		node->type == erw_ASTNODETYPE_FUNCDEF, 
+		"invalid type (%s)", 
+		node->type->name
+	);
+	log_assert(lines, "is NULL");
+
+	struct erw_FuncDeclr* func = erw_scope_findfunc(
+		self, 
+		node->funcdef.name->text
+	);
 	if(func)
 	{
 		struct Str msg;
 		str_ctorfmt(
 			&msg,
 			"Redefinition of function ('%s') declared at line %zu, column %zu", 
-			node->branches[0]->token.text,
-			func->node->branches[0]->token.linenum,
-			func->node->branches[0]->token.column
+			node->funcdef.name->text,
+			func->node->funcdef.name->linenum,
+			func->node->funcdef.name->column
 		);
 
 		erw_error(
 			msg.data, 
-			lines[node->branches[0]->token.linenum - 1].data, 
-			node->branches[0]->token.linenum, 
-			node->branches[0]->token.column,
-			node->branches[0]->token.column + 
-				vec_getsize(node->branches[0]->token.text) - 2
+			lines[node->funcdef.name->linenum - 1].data, 
+			node->funcdef.name->linenum, 
+			node->funcdef.name->column,
+			node->funcdef.name->column + 
+				vec_getsize(node->funcdef.name->text) - 2
 		);
 		str_dtor(&msg);
 	}
 
-	struct erw_Variable* var = erw_scope_findvariable(
+	struct erw_VarDeclr* var = erw_scope_findvar(
 		self, 
-		node->branches[0]->token.text
+		node->funcdef.name->text
 	);
-
 	if(var)
 	{
 		struct Str msg;
 		str_ctorfmt(
 			&msg,
 			"Redefinition of function ('%s') declared at line %zu, column %zu", 
-			node->branches[0]->token.text,
-			var->node->branches[0]->token.linenum,
-			var->node->branches[0]->token.column
+			node->funcdef.name->text,
+			var->node->vardeclr.name->linenum,
+			var->node->vardeclr.name->column
 		);
 
 		erw_error(
 			msg.data, 
-			lines[node->branches[0]->token.linenum - 1].data, 
-			node->branches[0]->token.linenum, 
-			node->branches[0]->token.column,
-			node->branches[0]->token.column + 
-				vec_getsize(node->branches[0]->token.text) - 2
+			lines[node->funcdef.name->linenum - 1].data, 
+			node->funcdef.name->linenum, 
+			node->funcdef.name->column,
+			node->funcdef.name->column + 
+				vec_getsize(node->funcdef.name->text) - 2
 		);
 		str_dtor(&msg);
 	}
 
-	struct erw_Function symbol;
-	if(vec_getsize(node->branches[2]->branches))
+	struct erw_FuncDeclr symbol;
+	if(node->funcdef.type)
 	{
-		struct erw_ASTNode* typenode = node->branches[2]->branches[0];
-		symbol.type = erw_scope_gettype(self, typenode, lines);
+		symbol.type = erw_scope_createtype(self, node->funcdef.type, lines);
 	}
 	else
 	{
 		symbol.type = NULL;
 	}
 
-	symbol.name = node->branches[0]->token.text;
 	symbol.node = node;
 	symbol.used = 0;
 	vec_pushback(self->functions, symbol);
 }
 
-void erw_scope_addtypedef(
+void erw_scope_addtypedeclr(
 	struct erw_Scope* self, 
 	struct erw_ASTNode* node,
 	struct Str* lines)
 {
 	log_assert(self, "is NULL");
 	log_assert(node, "is NULL");
+	log_assert(
+		node->type == erw_ASTNODETYPE_TYPEDECLR, 
+		"invalid type (%s)", 
+		node->type->name
+	);
 	log_assert(lines, "is NULL");
 
-	struct erw_Type* type1 = erw_type_newfromastnode(node->branches[0]);
-	struct erw_Type* type = erw_scope_findtype(self, type1->typedef_.name);
+	struct erw_TypeDeclr* type = erw_scope_findtype(
+		self, 
+		node->typedeclr.name->text
+	);
 	if(type)
 	{
 		struct Str msg;
 		str_ctorfmt(
 			&msg,
 			"Redefinition of type ('%s') declared at line %zu, column %zu", 
-			type1->typedef_.name,
-			type->typedef_.token->linenum,
-			type->typedef_.token->column
+			node->typedeclr.name->text,
+			type->node->token->linenum,
+			type->node->token->column
 		);
 
 		erw_error(
 			msg.data, 
-			lines[type1->typedef_.token->linenum - 1].data, 
-			type1->typedef_.token->linenum, 
-			type1->typedef_.token->column,
-			type1->typedef_.token->column + 
-				vec_getsize(type1->typedef_.token->text) - 2
+			lines[node->typedeclr.name->linenum - 1].data, 
+			node->typedeclr.name->linenum, 
+			node->typedeclr.name->column,
+			node->typedeclr.name->column + 
+				vec_getsize(node->typedeclr.name->text) - 2
 		);
 		str_dtor(&msg);
 	}
 
-	if(vec_getsize(node->branches) == 2)
-	{
-		log_assert(node->branches[1]->istoken, "???");
-		struct erw_Type* type2 = erw_type_newfromastnode(node->branches[1]);
-		if(type2->type != erw_TYPETYPE_TYPEDEF)
-		{
-			struct Str msg;
-			str_ctor(&msg, "You cannot declare a Type to be a reference/array");
-			erw_error(
-				msg.data, 
-				lines[node->branches[0]->token.linenum - 1].data, 
-				node->branches[0]->token.linenum, 
-				node->branches[0]->token.column,
-				node->branches[0]->token.column + 
-					vec_getsize(node->branches[0]->token.text) - 2
-			);
-			str_dtor(&msg);
-		}
+	struct erw_TypeDeclr symbol;
+	symbol.node = node;
+	symbol.type = erw_type_new(erw_TYPEINFO_NAMED, NULL);
+	symbol.type->named.name = node->typedeclr.name->text;
+	symbol.type->named.used = 0;
 
-		type1->typedef_.type = erw_scope_gettype(
+	if(!node->typedeclr.type)
+	{
+		symbol.type->named.type = erw_type_new(erw_TYPEINFO_EMPTY, NULL);
+		symbol.type->named.size = 0; //Should this be 1?
+	}
+	else if(node->typedeclr.type->type == erw_ASTNODETYPE_TYPE)
+	{
+		struct erw_Type* newtype = erw_scope_gettype(
 			self, 
-			node->branches[1], 
+			node->typedeclr.type->token, 
 			lines
 		);
+
+		symbol.type->named.type = newtype;
+		symbol.type->named.size = newtype->size;
+	}
+	else if(node->typedeclr.type->type == erw_ASTNODETYPE_STRUCT)
+	{
+		struct erw_Type* newtype = erw_type_new(erw_TYPEINFO_STRUCT, NULL);
+		for(size_t i = 0; 
+			i < vec_getsize(node->typedeclr.type->struct_.members);
+			i++)
+		{
+			struct erw_TypeStructMember member = {
+				.type = erw_scope_createtype(
+					self, 
+					node->typedeclr.type->struct_.members[i]->vardeclr.type,
+					lines
+				),
+				.name = node->typedeclr.type->struct_.members[i]->vardeclr.name
+					->text
+			};
+
+			newtype->size += member.type->size;
+			vec_pushback(newtype->struct_.members, member);
+		}
+
+		symbol.type->named.type = newtype;
+		symbol.type->named.size = newtype->size;
+	}
+	else if(node->typedeclr.type->type == erw_ASTNODETYPE_UNION)
+	{
+		struct erw_Type* newtype = erw_type_new(erw_TYPEINFO_UNION, NULL);
+		size_t largestsize = 0;
+		for(size_t i = 0; 
+			i < vec_getsize(node->typedeclr.type->union_.members);
+			i++)
+		{
+			struct erw_Type* tmptype = erw_scope_createtype(
+				self, 
+				node->typedeclr.type->union_.members[i],
+				lines
+			);
+
+			if(tmptype->size > largestsize)
+			{
+				largestsize = tmptype->size;
+			}
+
+			vec_pushback(newtype->union_.members, tmptype);
+		}
+
+		newtype->union_.size = largestsize;
+		symbol.type->named.type = newtype;
+		symbol.type->named.size = newtype->size;
+	}
+	else if(node->typedeclr.type->type == erw_ASTNODETYPE_ENUM)
+	{
+		struct erw_Type* newtype = erw_type_new(erw_TYPEINFO_ENUM, NULL);
+		newtype->enum_.size = sizeof(int); //NOTE: Temporary
+		for(size_t i = 0; 
+			i < vec_getsize(node->typedeclr.type->enum_.members);
+			i++)
+		{
+			vec_pushback(
+				newtype->enum_.members, 
+				node->typedeclr.type->enum_.members[i]->enummember.name->text
+			); //enummember.value not handled
+		}
+
+		symbol.type->named.type = newtype;
+		symbol.type->named.size = newtype->size;
+	}
+	else
+	{
+		log_assert(0, "this should not happen (%s)", node->type->name);
 	}
 
-	vec_pushback(self->types, type1);
+	vec_pushback(self->types, symbol);
 }
 
 void erw_scope_printinternal(struct erw_Scope* self, size_t level)
@@ -510,42 +627,19 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 
 	for(size_t i = 0; i < vec_getsize(self->types); i++)
 	{
-		if(self->types[i]->typedef_.type)
+		for(size_t j = 0; j < level + 1; j++)
 		{
-			int isnative = 0;
-			for(size_t j = 0; j < erw_TYPEBUILTIN_COUNT; j++)
-			{  
-				if(self->types[i]->typedef_.name == 
-					erw_type_builtins[j]->typedef_.name)
-				{
-					isnative = 1;
-					break;
-				}
-			}
-
-			if(!isnative)
-			{
-				for(size_t j = 0; j < level + 1; j++)
-				{
-					printf("    ");
-					printf("│");
-				}
-
-				struct Str str = erw_type_tostring(self->types[i]->typedef_.type);
-				printf("─ Type: %s (%s)\n", self->types[i]->typedef_.name, str.data);
-				str_dtor(&str);
-			}
+			printf("    ");
+			printf("│");
 		}
-		else
-		{
-			for(size_t j = 0; j < level + 1; j++)
-			{
-				printf("    ");
-				printf("│");
-			}
 
-			printf("─ Type: %s\n", self->types[i]->typedef_.name);
-		}
+		struct Str str = erw_type_tostring(self->types[i].type->named.type);
+		printf(
+			"─ Type: %s (%s)\n", 
+			self->types[i].type->named.name, 
+			str.data
+		);
+		str_dtor(&str);
 	}
 
 	for(size_t i = 0; i < vec_getsize(self->functions); i++)
@@ -559,11 +653,19 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 		if(self->functions[i].type)
 		{
 			struct Str str = erw_type_tostring(self->functions[i].type);
-			printf("─ Function: %s (%s)\n", self->functions[i].name, str.data);
+			printf(
+				"─ Function: %s (%s)\n", 
+				self->functions[i].node->funcdef.name->text, 
+				str.data
+			);
+			str_dtor(&str);
 		}
 		else
 		{
-			printf("─ Function: %s\n", self->functions[i].name);
+			printf(
+				"─ Function: %s\n", 
+				self->functions[i].node->funcdef.name->text
+			);
 		}
 	}
 
@@ -576,7 +678,12 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 		}
 
 		struct Str str = erw_type_tostring(self->variables[i].type);
-		printf("─ Variable: %s (%s)\n", self->variables[i].name, str.data);
+		printf(
+			"─ Variable: %s (%s)\n", 
+			self->variables[i].node->vardeclr.name->text, 
+			str.data
+		);
+		str_dtor(&str);
 	}
 
 	for(size_t i = 0; i < vec_getsize(self->children); i++)
