@@ -17,6 +17,8 @@
 	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//TODO: Free up memory allocated by erw_scope_createtype etc
+
 #include "erw_scope.h"
 #include "erw_error.h"
 #include "str.h"
@@ -254,6 +256,7 @@ struct erw_Type* erw_scope_createtype(
 		if(node->type == erw_ASTNODETYPE_TYPE)
 		{
 			tmptype = erw_scope_gettype(self, node->token, lines);
+			tmptype->named.used = 1;
 			tmptype->parent = type;
 			done = 1; //Break loop
 		}
@@ -297,7 +300,7 @@ struct erw_Type* erw_scope_createtype(
 			{
 				type->array.size = type->array.elements * tmptype->size;
 				struct erw_Type* lasttype = type->parent;
-				while(lasttype->info == erw_TYPEINFO_ARRAY)
+				while(lasttype && lasttype->info == erw_TYPEINFO_ARRAY)
 				{
 					lasttype->array.size = lasttype->array.elements 
 						* lasttype->size;
@@ -701,15 +704,23 @@ void erw_scope_print(struct erw_Scope* self)
 void erw_scope_dtor(struct erw_Scope* self)
 {
 	log_assert(self, "is NULL");
+	for(size_t i = 0; i < vec_getsize(self->types); i++)
+	{
+		if(self->types[i].node) //Check if type is builtin
+		{
+			erw_type_dtor(self->types[i].type);
+		}
+	}
+
+	vec_dtor(self->types);
+	vec_dtor(self->functions);
+	vec_dtor(self->variables);
 
 	for(size_t i = 0; i < vec_getsize(self->children); i++)
 	{
 		erw_scope_dtor(self->children[i]);
 	}
 
-	vec_dtor(self->functions);
-	vec_dtor(self->variables);
-	vec_dtor(self->types);
 	vec_dtor(self->children);
 	free(self);
 }

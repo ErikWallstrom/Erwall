@@ -432,6 +432,13 @@ static struct erw_Type* erw_getexprtype(
 		{
 			ret = erw_type_builtins[erw_TYPEBUILTIN_CHAR];
 		}
+		else if(exprnode->token->type == erw_TOKENTYPE_LITERAL_STRING)
+		{
+			ret = erw_type_new(erw_TYPEINFO_SLICE, NULL);
+			ret->slice.type = erw_type_builtins[erw_TYPEBUILTIN_CHAR];
+			ret->slice.mutable = 0; //NOTE: Temporary
+			ret->slice.size = sizeof(void*); //NOTE: Temporary
+		}
 		else if(exprnode->token->type == erw_TOKENTYPE_IDENT)
 		{
 			struct erw_VarDeclr* var = erw_scope_getvar(
@@ -613,7 +620,7 @@ static void erw_checkfunccall(
 	{
 		struct erw_Type* type = erw_scope_createtype(
 			scope,
-			func->node->funcdef.params[i],
+			func->node->funcdef.params[i]->vardeclr.type,
 			lines
 		);
 
@@ -1152,7 +1159,7 @@ static int erw_checkifreturn(struct erw_ASTNode* ifnode)
 
 	for(size_t i = 0; i < vec_getsize(ifnode->if_.elseifs); i++)
 	{
-		if(!vec_getsize(ifnode->if_.elseifs[i]->elseif.block))
+		if(!vec_getsize(ifnode->if_.elseifs[i]->elseif.block->block.stmts))
 		{
 			return 0;
 		}
@@ -1177,7 +1184,7 @@ static int erw_checkifreturn(struct erw_ASTNode* ifnode)
 
 	if(ifnode->if_.else_)
 	{
-		if(!vec_getsize(ifnode->if_.else_->else_.block))
+		if(!vec_getsize(ifnode->if_.else_->else_.block->block.stmts))
 		{
 			return 0;
 		}
@@ -1365,6 +1372,7 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 		}
 		else if(ast->start.children[i]->type == erw_ASTNODETYPE_TYPEDECLR)
 		{
+			//TODO: Semantic check for type declarations
 			erw_scope_addtypedeclr(globalscope, ast->start.children[i], lines);
 		}
 	}

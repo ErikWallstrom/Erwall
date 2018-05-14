@@ -1,21 +1,32 @@
-func print: ()
+func print: (let x: []Char)
 {
-	type Lol: Int32;
-	type Lmao: Lol;
-	type Xd;
+	type Player: struct(
+		mut x: Int32 = 0,
+		mut y: Int32 = 0,
+		let name: []Char
+	);
+
+	type Result: union(Player, Player, Int32);
+	type Days: enum(monday, tuesday, friday = 4);
 }
 
 func test: (let a: Int32, let b: Int32) -> Int32
 {
 	let x: Int32 = 12;
 	let y: &Int32 = &x;
-	if(x < 20)
+
+	let arr: [3]Int32;
+	let lol: [3]Int32 = arr;
+
+	if(cast(Bool, x + 3))
 	{
-		print();
+		print("Hello");
+		return 3;
+	}
+	elseif(arr == lol)
+	{
 		return 2;
 	}
-	else
-	{
-		return 1;
-	}
+
+	return 1;
 }
