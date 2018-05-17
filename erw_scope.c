@@ -551,6 +551,40 @@ void erw_scope_addtypedeclr(
 					->text
 			};
 
+			for(size_t j = 0; j < vec_getsize(newtype->struct_.members); j++)
+			{
+				if(!strcmp(newtype->struct_.members[j].name, member.name))
+				{
+					struct Str msg;
+					str_ctorfmt(
+						&msg,
+						"Redefinition of struct member ('%s') declared at line"
+							" %zu, column %zu", 
+						member.name,
+						node->typedeclr.type->struct_.members[j]->vardeclr.name
+							->linenum,
+						node->typedeclr.type->struct_.members[j]->vardeclr.name
+							->column
+					);
+
+					erw_error(
+						msg.data, 
+						lines[node->typedeclr.type->struct_.members[i]->vardeclr
+							.name->linenum - 1 ].data, 
+						node->typedeclr.type->struct_.members[i]->vardeclr
+							.name->linenum, 
+						node->typedeclr.type->struct_.members[i]->vardeclr
+							.name->column,
+						node->typedeclr.type->struct_.members[i]->vardeclr
+							.name->column 
+							+ vec_getsize(
+								node->typedeclr.type->struct_.members[i]
+									->vardeclr.name->text) - 2
+					);
+					str_dtor(&msg);
+				}
+			}
+
 			newtype->size += member.type->size;
 			vec_pushback(newtype->struct_.members, member);
 		}
@@ -572,6 +606,38 @@ void erw_scope_addtypedeclr(
 				lines
 			);
 
+			for(size_t j = 0; j < vec_getsize(newtype->union_.members); j++)
+			{
+				if(erw_type_compare(tmptype, newtype->union_.members[j]))
+				{
+					struct Str msg;
+					struct Str str = erw_type_tostring(tmptype);
+					str_ctorfmt(
+						&msg,
+						"Redefinition of struct member ('%s') declared at line"
+							" %zu, column %zu", 
+						str.data,
+						node->typedeclr.type->union_.members[j]->token->linenum,
+						node->typedeclr.type->union_.members[j]->token->column
+					);
+
+					erw_error(
+						msg.data, 
+						lines[node->typedeclr.type->union_.members[i]->token
+							->linenum - 1].data, 
+						node->typedeclr.type->union_.members[i]->token->linenum, 
+						node->typedeclr.type->union_.members[i]->token->column,
+						node->typedeclr.type->union_.members[i]->token->column 
+							+ vec_getsize(
+								node->typedeclr.type->union_.members[i]->token
+									->text) - 2
+					);
+
+					str_dtor(&str);
+					str_dtor(&msg);
+				}
+			}
+
 			if(tmptype->size > largestsize)
 			{
 				largestsize = tmptype->size;
@@ -588,14 +654,133 @@ void erw_scope_addtypedeclr(
 	{
 		struct erw_Type* newtype = erw_type_new(erw_TYPEINFO_ENUM, NULL);
 		newtype->enum_.size = sizeof(int); //NOTE: Temporary
+
+		size_t defaultvalue = 0;
 		for(size_t i = 0; 
 			i < vec_getsize(node->typedeclr.type->enum_.members);
 			i++)
 		{
-			vec_pushback(
-				newtype->enum_.members, 
-				node->typedeclr.type->enum_.members[i]->enummember.name->text
-			); //enummember.value not handled
+			struct erw_TypeEnumMember member;
+			member.name = node->typedeclr.type->enum_.members[i]->enummember
+				.name->text;
+			for(size_t j = 0; j < vec_getsize(newtype->enum_.members); j++)
+			{
+				if(!strcmp(newtype->enum_.members[j].name, member.name))
+				{
+					struct Str msg;
+					str_ctorfmt(
+						&msg,
+						"Redefinition of enum member ('%s') declared at line"
+							" %zu, column %zu", 
+						member.name,
+						node->typedeclr.type->enum_.members[j]->enummember.name
+							->linenum,
+						node->typedeclr.type->enum_.members[j]->enummember.name
+							->column
+					);
+
+					erw_error(
+						msg.data, 
+						lines[node->typedeclr.type->enum_.members[i]->enummember
+							.name->linenum - 1].data, 
+						node->typedeclr.type->enum_.members[i]->enummember.name
+							->linenum, 
+						node->typedeclr.type->enum_.members[i]->enummember.name
+							->column, 
+						node->typedeclr.type->enum_.members[i]->enummember.name
+							->column + vec_getsize(
+								node->typedeclr.type->enum_.members[i]
+									->enummember.name->text) - 2
+					);
+
+					str_dtor(&msg);
+				}
+
+				if(node->typedeclr.type->enum_.members[i]->enummember.value)
+				{
+					if(node->typedeclr.type->enum_.members[j]->enummember.value)
+					{
+						if(!strcmp(
+							node->typedeclr.type->enum_.members[i]->enummember
+								.value->token->text,
+							node->typedeclr.type->enum_.members[j]->enummember
+								.value->token->text))
+						{
+							struct Str msg;
+							str_ctorfmt(
+								&msg,
+								"Enum member with same the value as '%s'"
+									" declared at line %zu, column %zu", 
+								node->typedeclr.type->enum_.members[i]
+									->enummember.name->text,
+								node->typedeclr.type->enum_.members[j]
+									->enummember.name->linenum,
+								node->typedeclr.type->enum_.members[j]
+									->enummember .name->column
+							);
+
+							erw_error(
+								msg.data, 
+								lines[node->typedeclr.type->enum_.members[i]
+									->enummember.name->linenum - 1].data, 
+								node->typedeclr.type->enum_.members[i]
+									->enummember.name->linenum, 
+								node->typedeclr.type->enum_.members[i]
+									->enummember.name->column, 
+								node->typedeclr.type->enum_.members[i]
+									->enummember.name->column + vec_getsize(
+										node->typedeclr.type->enum_.members[i]
+											->enummember.name->text) - 2
+							);
+
+							str_dtor(&msg);
+						}
+					}
+				}
+			}
+
+			if(node->typedeclr.type->enum_.members[i]->enummember.value)
+			{
+				size_t value = atol(
+					node->typedeclr.type->enum_.members[i]->enummember.value
+						->token->text
+				);
+
+				if(value < defaultvalue) //Should be allowed happen?
+				{
+					struct Str msg;
+					str_ctorfmt(
+						&msg,
+						"Too small value given to enum member '%s' (%zu)",
+						member.name,
+						value
+					);
+
+					erw_error(
+						msg.data, 
+						lines[node->typedeclr.type->enum_.members[i]
+							->enummember.name->linenum - 1].data, 
+						node->typedeclr.type->enum_.members[i]
+							->enummember.name->linenum, 
+						node->typedeclr.type->enum_.members[i]
+							->enummember.name->column, 
+						node->typedeclr.type->enum_.members[i]
+							->enummember.name->column + vec_getsize(
+								node->typedeclr.type->enum_.members[i]
+									->enummember.name->text) - 2
+					);
+
+					str_dtor(&msg);
+				}
+				else
+				{
+					defaultvalue = value;
+				}
+			}
+
+			member.value = defaultvalue;
+			defaultvalue++;
+			vec_pushback(newtype->enum_.members, member);
 		}
 
 		symbol.type->named.type = newtype;
@@ -711,8 +896,9 @@ static void erw_scope_printinternal(
 
 				
 				printf(
-					"─ Enum member: %s\n", 
-					self->types[i].type->named.type->enum_.members[j]
+					"─ Enum member: %s (%zu)\n", 
+					self->types[i].type->named.type->enum_.members[j].name,
+					self->types[i].type->named.type->enum_.members[j].value
 				);
 			}
 		}

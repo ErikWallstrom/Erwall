@@ -65,6 +65,12 @@ struct erw_TypeStructMember
 	const char* name;
 };
 
+struct erw_TypeEnumMember
+{
+	size_t value;
+	const char* name;
+};
+
 struct erw_Type
 {
 	union
@@ -115,7 +121,7 @@ struct erw_Type
 		struct
 		{
 			size_t size;
-			Vec(const char*) members;
+			Vec(struct erw_TypeEnumMember) members;
 		} enum_;
 
 		struct

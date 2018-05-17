@@ -25,7 +25,7 @@
 #else
 //XXX: Works, don't know if it's the best way to disable assert though
 #define log_assert(expr, fmt, ...) \
-	(void)sizeof(expr);
+	(void)(expr);
 #endif
 
 typedef void(*LogErrorCallback)(void*);

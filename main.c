@@ -253,12 +253,8 @@ int main(int argc, char* argv[])
 		//Cleanup
 		erw_scope_dtor(scope);
 		erw_ast_dtor(ast);
-		for(size_t i = 0; i < vec_getsize(tokens); i++)
-		{
-			vec_dtor(tokens[i].text);
-		}
+		erw_tokens_delete(tokens);
 
-		vec_dtor(tokens);
 		for(size_t i = 0; i < vec_getsize(lines); i++)
 		{
 			str_dtor(&lines[i]);

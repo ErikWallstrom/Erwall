@@ -166,7 +166,7 @@ struct erw_ASTNode
 			struct erw_ASTNode* block;
 		} while_;
 
-		struct
+		struct //Add type?
 		{
 			Vec(struct erw_ASTNode*) members;
 		} enum_;

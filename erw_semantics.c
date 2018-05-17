@@ -687,6 +687,29 @@ static void erw_checkfunc(
 	struct Str* lines
 );
 
+static void erw_checktypedeclr(
+	struct erw_Scope* scope,
+	struct erw_ASTNode* typenode,
+	struct Str* lines)
+{
+	log_assert(scope, "is NULL");
+	log_assert(typenode, "is NULL");
+	log_assert(lines, "is NULL");
+
+	erw_scope_addtypedeclr(scope, typenode, lines);
+	/*
+	if(typenode->typedeclr.type->type == erw_ASTNODETYPE_STRUCT)
+	{
+	}
+	else if(typenode->typedeclr.type->type == erw_ASTNODETYPE_UNION)
+	{
+	}
+	else if(typenode->typedeclr.type->type == erw_ASTNODETYPE_ENUM)
+	{
+	}
+	*/
+}
+
 static void erw_checkblock(
 	struct erw_Scope* scope,
 	struct erw_ASTNode* blocknode,
@@ -709,7 +732,7 @@ static void erw_checkblock(
 		}
 		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_TYPEDECLR)
 		{
-			erw_scope_addtypedeclr(scope, blocknode->block.stmts[i], lines);
+			erw_checktypedeclr(scope, blocknode->block.stmts[i], lines);
 		}
 		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_VARDECLR)
 		{
@@ -1445,7 +1468,6 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 	}
 }
 
-
 struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 {
 	log_assert(ast, "is NULL");
@@ -1482,8 +1504,7 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 		}
 		else if(ast->start.children[i]->type == erw_ASTNODETYPE_TYPEDECLR)
 		{
-			//TODO: Semantic check for type declarations
-			erw_scope_addtypedeclr(globalscope, ast->start.children[i], lines);
+			erw_checktypedeclr(globalscope, ast->start.children[i], lines);
 		}
 	}
 

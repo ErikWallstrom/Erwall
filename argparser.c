@@ -67,13 +67,10 @@ struct ArgParser* argparser_ctor(
 							}
 							else
 							{ 
-								if(argpos)
-								{ 
-									log_error(
-										"Option '%s' expects an argument",
-										opts[j].opt
-									);
-								}
+								log_error(
+									"Option '%s' expects an argument",
+									opts[j].opt
+								);
 							}
 						}
 						else

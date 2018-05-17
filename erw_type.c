@@ -158,7 +158,7 @@ struct erw_Type* erw_type_new(enum erw_TypeInfo info, struct erw_Type* parent)
 	}
 	else if(info == erw_TYPEINFO_ENUM)
 	{
-		self->enum_.members = vec_ctor(const char*, 0);
+		self->enum_.members = vec_ctor(struct erw_TypeEnumMember, 0);
 	}
 	else if(info == erw_TYPEINFO_FUNC)
 	{

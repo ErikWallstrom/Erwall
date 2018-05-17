@@ -91,7 +91,7 @@ func main: () -> Int32
 	# @printf("%i", x);
 
 	x = x + 19;
-	if(x < 20 || x > 20 && x != 12 && x == 12)
+	if(x < 20 or x > 20 and x != 12 and x == 12)
 	{
 
 	}
@@ -99,3 +99,93 @@ func main: () -> Int32
 	return 0;
 }
 
+type Vec3f: struct(
+	let x: Float32 = 0.0, 
+	let y: Float32 = 0.0,
+	let z: Float32 = 0.0
+);
+
+# let vec: Vec3f = Vec3f.default;
+
+func lmao: (let args: []Char)
+{
+	# Enums
+	type Weekday: enum(
+		monday, 
+		tuesday, 
+		wednesday, 
+		thursday, 
+		friday, 
+		saturday, 
+		sunday
+	);
+
+	let day: Weekday;# = Weekday.monday;
+
+	# Structs
+	type Position: struct(let x: Int32, let y: Int32);
+
+	# let pos: Position = struct(x: 12, y: 44);
+
+	# Unions
+	type None;
+	type Result: union(Int32, None);
+
+	# let res: Result = Result(Int32: 12);
+
+	# References
+	let x: Int32;
+	let xref: &Int32 = &x;
+	let xref2: &Int32;# = &Int32(12);
+
+	# Arrays
+	let nums: [5]Int32; # = Int32[5](3, 42, 55, 124, 0);
+
+	# Slices
+	let numsslice: []Int32; # = Int32[](12, 999, 10, 44);
+
+	func test: (let pos: Position) -> Result
+	{
+	#[
+		if(pos.x > 0)
+		{
+			return Result(Int32: 42);
+		}
+		else
+		{
+			return Result(None:);
+		}
+	#]
+		return cast(Result, 0);
+	}
+
+	let result: Result;# = test(Pos(x: 42, y: 109));
+	#[match(result)
+	{
+		case(Int32 as x)
+		{
+			
+		}
+		case(None)
+		{
+
+		}
+	}#]
+}
+
+type Player: struct(let x: Int32, let y: Int32);
+type Union: union(Int32, Player, Float32);
+type Weekdays: enum(monday, tuesday, wednesday);
+
+func player_ctor: (let self: &Player) -> &Player
+{
+	self& += cast(Player, 2);
+	return self;
+}
+
+func lol: () -> Int32
+{
+	let p: Player;
+	player_ctor(&p);
+	return 0;
+}

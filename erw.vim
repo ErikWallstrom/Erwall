@@ -9,7 +9,7 @@ endif
 
 syn keyword Todo TODO FIXME NOTE XXX
 syn keyword Keyword type func let mut if elseif else return cast while defer 
-	\ unsafe
+	\ unsafe and or 
 syn match Type "\u[[:alnum:]_]\+"
 syn match Variable "\l[[:alnum:]_]\+"
 syn match Number "\d\+"

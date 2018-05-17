@@ -1,6 +1,6 @@
-type Player: struct(let x: Int32, let y: Int32);
+type Player: struct(let x: Int32, let y: Int32, let z: Float32, let a: Float32);
 type Union: union(Int32, Player, Float32);
-type Weekdays: enum(monday, tuesday, wednesday);
+type Weekdays: enum(monday, tuesday = 4, wednesday = 3, friday);
 
 func player_ctor: (let self: &Player) -> &Player
 {
