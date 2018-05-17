@@ -255,6 +255,8 @@ struct erw_Type* erw_scope_createtype(
 		struct erw_Type* tmptype = NULL;
 		if(node->type == erw_ASTNODETYPE_TYPE)
 		{
+			/*TODO: Copy instead of reference here, so that it is easier to
+			  clean up memory */
 			tmptype = erw_scope_gettype(self, node->token, lines);
 			tmptype->named.used = 1;
 			tmptype->parent = type;
@@ -607,7 +609,10 @@ void erw_scope_addtypedeclr(
 	vec_pushback(self->types, symbol);
 }
 
-void erw_scope_printinternal(struct erw_Scope* self, size_t level)
+static void erw_scope_printinternal(
+	struct erw_Scope* self, 
+	size_t level, 
+	struct Str* lines)
 {
 	for(size_t i = 0; i < level; i++)
 	{
@@ -642,6 +647,76 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 			self->types[i].type->named.name, 
 			str.data
 		);
+
+		if(self->types[i].type->named.type->info == erw_TYPEINFO_STRUCT)
+		{
+			for(size_t j = 0; 
+				j < vec_getsize(
+					self->types[i].type->named.type->struct_.members
+				);
+				j++)
+			{
+				for(size_t k = 0; k < level + 2; k++)
+				{
+					printf("    ");
+					printf("│");
+				}
+
+				struct Str str1 = erw_type_tostring(
+					self->types[i].type->named.type->struct_.members[j].type
+				);
+				printf(
+					"─ Struct member: %s (%s)\n", 
+					self->types[i].type->named.type->struct_.members[j].name,
+					str1.data
+				);
+				str_dtor(&str1);
+			}
+		}
+		else if(self->types[i].type->named.type->info == erw_TYPEINFO_UNION)
+		{
+			for(size_t j = 0; 
+				j < vec_getsize(
+					self->types[i].type->named.type->union_.members
+				);
+				j++)
+			{
+				for(size_t k = 0; k < level + 2; k++)
+				{
+					printf("    ");
+					printf("│");
+				}
+
+				struct Str str1 = erw_type_tostring(
+					self->types[i].type->named.type->union_.members[j]
+				);
+
+				printf("─ Union member: %s\n", str1.data);
+				str_dtor(&str1);
+			}
+		}
+		else if(self->types[i].type->named.type->info == erw_TYPEINFO_ENUM)
+		{
+			for(size_t j = 0; 
+				j < vec_getsize(
+					self->types[i].type->named.type->enum_.members
+				);
+				j++)
+			{
+				for(size_t k = 0; k < level + 2; k++)
+				{
+					printf("    ");
+					printf("│");
+				}
+
+				
+				printf(
+					"─ Enum member: %s\n", 
+					self->types[i].type->named.type->enum_.members[j]
+				);
+			}
+		}
+
 		str_dtor(&str);
 	}
 
@@ -691,14 +766,15 @@ void erw_scope_printinternal(struct erw_Scope* self, size_t level)
 
 	for(size_t i = 0; i < vec_getsize(self->children); i++)
 	{
-		erw_scope_printinternal(self->children[i], level + 1);
+		erw_scope_printinternal(self->children[i], level + 1, lines);
 	}
 }
 
-void erw_scope_print(struct erw_Scope* self)
+void erw_scope_print(struct erw_Scope* self, struct Str* lines)
 {
 	log_assert(self, "is NULL");
-	erw_scope_printinternal(self, 0);
+	log_assert(lines, "is NULL");
+	erw_scope_printinternal(self, 0, lines);
 }
 
 void erw_scope_dtor(struct erw_Scope* self)

@@ -44,6 +44,8 @@ const struct erw_ASTNodeType* const erw_ASTNODETYPE_STRUCT =
 	&(struct erw_ASTNodeType){"Struct Type"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNION =
 	&(struct erw_ASTNodeType){"Union Type"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNSAFE =
+	&(struct erw_ASTNodeType){"Unsafe Statement"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_REFERENCE =
 	&(struct erw_ASTNodeType){"Reference Type"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_ARRAY =
@@ -230,6 +232,14 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 				erw_ast_printinternal(ast->funccall.args[i], level + 1);
 			}
 		}
+		else if(ast->type == erw_ASTNODETYPE_DEFER)
+		{
+			erw_ast_printinternal(ast->defer.block, level + 1);
+		}
+		else if(ast->type == erw_ASTNODETYPE_UNSAFE)
+		{
+			erw_ast_printinternal(ast->unsafe.block, level + 1);
+		}
 		else if(ast->type == erw_ASTNODETYPE_CAST)
 		{
 			erw_ast_printinternal(ast->cast.type, level + 1);
@@ -395,6 +405,14 @@ void erw_ast_dtor(struct erw_ASTNode* ast)
 		}
 
 		vec_dtor(ast->funccall.args);
+	}
+	else if(ast->type == erw_ASTNODETYPE_DEFER)
+	{
+		erw_ast_dtor(ast->defer.block);
+	}
+	else if(ast->type == erw_ASTNODETYPE_UNSAFE)
+	{
+		erw_ast_dtor(ast->unsafe.block);
 	}
 	else if(ast->type == erw_ASTNODETYPE_CAST)
 	{

@@ -52,6 +52,8 @@ const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_UNION =
 	&(struct erw_TokenType){"Keyword 'union'"};
 const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ENUM = 
 	&(struct erw_TokenType){"Keyword 'enum'"};
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_UNSAFE =
+	&(struct erw_TokenType){"Keyword 'unsafe'"};
 const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DECLR =
 	&(struct erw_TokenType){"Operator 'Declaration'"};
 const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ADD =
@@ -352,6 +354,21 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 			{
 				token.type = erw_TOKENTYPE_KEYWORD_ENUM;
 			}
+			else if(sizeof("unsafe") - 1 == vec_getsize(token.text) &&
+				!memcmp("unsafe", token.text, sizeof("unsafe") - 1))
+			{
+				token.type = erw_TOKENTYPE_KEYWORD_UNSAFE;
+			}
+			else if(sizeof("and") - 1 == vec_getsize(token.text) &&
+				!memcmp("and", token.text, sizeof("and") - 1))
+			{
+				token.type = erw_TOKENTYPE_OPERATOR_AND;
+			}
+			else if(sizeof("or") - 1 == vec_getsize(token.text) &&
+				!memcmp("or", token.text, sizeof("or") - 1))
+			{
+				token.type = erw_TOKENTYPE_OPERATOR_OR;
+			}
 			else if(sizeof("true") - 1 == vec_getsize(token.text) &&
 				!memcmp("true", token.text, sizeof("true") - 1))
 			{
@@ -559,28 +576,28 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				break;
 
 			case '&':
-				if(source[pos + 1] == '&')
+				/*if(source[pos + 1] == '&')
 				{
 					token.type = erw_TOKENTYPE_OPERATOR_AND;
 					column++;
 					vec_pushback(token.text, source[pos]);
 					pos++;
 				}
-				else
+				else*/
 				{
 					token.type = erw_TOKENTYPE_OPERATOR_BITAND;
 				}
 				break;
 
 			case '|':
-				if(source[pos + 1] == '|')
+				/*if(source[pos + 1] == '|')
 				{
 					token.type = erw_TOKENTYPE_OPERATOR_OR;
 					column++;
 					vec_pushback(token.text, source[pos]);
 					pos++;
 				}
-				else
+				else*/
 				{
 					token.type = erw_TOKENTYPE_OPERATOR_BITOR;
 				}

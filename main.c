@@ -214,7 +214,7 @@ int main(int argc, char* argv[])
 		if(argparser.results[3].used)
 		{ 
 			ansicode_printf(&titlecolor, "\nSymbol Table:\n\n");
-			erw_scope_print(scope);
+			erw_scope_print(scope, lines);
 			putchar('\n');
 			printf("(%f ms)\n\n", timeelapsed);
 		}

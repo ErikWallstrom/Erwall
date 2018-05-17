@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+//TODO: Implement str_set, make str_insertva only realloc when necessary
 struct Str
 { 
 	size_t len;

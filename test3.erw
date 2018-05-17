@@ -1,32 +1,16 @@
-func print: (let x: []Char)
-{
-	type Player: struct(
-		mut x: Int32 = 0,
-		mut y: Int32 = 0,
-		let name: []Char
-	);
+type Player: struct(let x: Int32, let y: Int32);
+type Union: union(Int32, Player, Float32);
+type Weekdays: enum(monday, tuesday, wednesday);
 
-	type Result: union(Player, Player, Int32);
-	type Days: enum(monday, tuesday, friday = 4);
+func player_ctor: (let self: &Player) -> &Player
+{
+	self& += cast(Player, 2);
+	return self;
 }
 
-func test: (let a: Int32, let b: Int32) -> Int32
+func main: () -> Int32
 {
-	let x: Int32 = 12;
-	let y: &Int32 = &x;
-
-	let arr: [3]Int32;
-	let lol: [3]Int32 = arr;
-
-	if(cast(Bool, x + 3))
-	{
-		print("Hello");
-		return 3;
-	}
-	elseif(arr == lol)
-	{
-		return 2;
-	}
-
-	return 1;
+	let p: Player;
+	player_ctor(&p);
+	return 0;
 }

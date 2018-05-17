@@ -49,7 +49,7 @@ func main: () -> Int32
 {
 	defer
 	{
-		@puts("Hello World");
+		# @puts("Hello World");
 	}
 
 	let xx: Int32 = 12;
@@ -61,7 +61,7 @@ func main: () -> Int32
 	{
 		defer
 		{
-			@puts("!!!");
+			# @puts("!!!");
 		}
 		return cast(T, 44) + x;
 	}
@@ -88,7 +88,7 @@ func main: () -> Int32
 	x /= 2;
 	x ^= 2;
 	x %= 3;
-	@printf("%i", x);
+	# @printf("%i", x);
 
 	x = x + 19;
 	if(x < 20 || x > 20 && x != 12 && x == 12)

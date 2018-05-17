@@ -92,6 +92,35 @@ static struct erw_Token* erw_parser_expect(
 	return ret;
 }
 
+static struct erw_ASTNode* erw_parse_deref(struct erw_Parser* parser)
+{
+	struct erw_ASTNode* identnode = erw_ast_new(
+		erw_ASTNODETYPE_LITERAL, //Is this really correct?
+		erw_parser_expect(parser, erw_TOKENTYPE_IDENT)
+	);
+
+	struct erw_ASTNode* node = erw_ast_new(
+		erw_ASTNODETYPE_UNEXPR, 
+		erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_BITAND)
+	);
+
+	node->unexpr.expr = identnode;
+	node->unexpr.left = 0;
+	while(erw_parser_check(parser, erw_TOKENTYPE_OPERATOR_BITAND))
+	{
+		struct erw_ASTNode* newnode = erw_ast_new(
+			erw_ASTNODETYPE_UNEXPR, 
+			erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_BITAND)
+		);
+		newnode->unexpr.expr = node;
+		newnode->unexpr.left = 0;
+		node = newnode;
+	}
+
+	log_info("Hello");
+	return node;
+}
+
 static struct erw_ASTNode* erw_parse_expr(struct erw_Parser* parser);
 static struct erw_ASTNode* erw_parse_funccall(struct erw_Parser* parser);
 static struct erw_ASTNode* erw_parse_type(struct erw_Parser* parser);
@@ -120,18 +149,7 @@ static struct erw_ASTNode* erw_parse_factor(struct erw_Parser* parser)
 		else if(parser->tokens[parser->current + 1].type 
 			== erw_TOKENTYPE_OPERATOR_BITAND)
 		{ 
-			struct erw_ASTNode* identnode = erw_ast_new(
-				erw_ASTNODETYPE_LITERAL, //Is this really correct?
-				erw_parser_expect(parser, erw_TOKENTYPE_IDENT)
-			);
-
-			node = erw_ast_new(
-				erw_ASTNODETYPE_UNEXPR, 
-				erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_BITAND)
-			);
-
-			node->unexpr.expr = identnode;
-			node->unexpr.left = 0;
+			node = erw_parse_deref(parser);
 		}
 		else
 		{ 
@@ -227,6 +245,7 @@ static struct erw_ASTNode* erw_parse_sign(struct erw_Parser* parser)
 		);
 		parser->current++;
 		signnode->unexpr.expr = erw_parse_exponent(parser);
+		signnode->unexpr.left = 1;
 	}
 	else
 	{
@@ -497,14 +516,17 @@ static struct erw_ASTNode* erw_parse_vardeclr(struct erw_Parser* parser)
 		str_dtor(&msg);
 	}
 
-	node->vardeclr.name = erw_parser_expect(parser, erw_TOKENTYPE_IDENT);
-	erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_DECLR);
-	node->vardeclr.type = erw_parse_type(parser);
+	if(node) //Remove warning
+	{
+		node->vardeclr.name = erw_parser_expect(parser, erw_TOKENTYPE_IDENT);
+		erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_DECLR);
+		node->vardeclr.type = erw_parse_type(parser);
 
-	if(erw_parser_check(parser, erw_TOKENTYPE_OPERATOR_ASSIGN))
-	{ 
-		erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_ASSIGN);
-		node->vardeclr.value = erw_parse_expr(parser);
+		if(erw_parser_check(parser, erw_TOKENTYPE_OPERATOR_ASSIGN))
+		{ 
+			erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_ASSIGN);
+			node->vardeclr.value = erw_parse_expr(parser);
+		}
 	}
 
 	return node;
@@ -724,6 +746,42 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 				vec_pushback(node->block.stmts, erw_parse_funccall(parser));
 			}
 			else if(parser->tokens[parser->current + 1].type 
+				== erw_TOKENTYPE_OPERATOR_BITAND)
+			{ 
+				//XXX: Really Ugly ^
+				struct erw_ASTNode* identnode = erw_parse_deref(parser);
+				if(parser->tokens[parser->current].type 
+					==  erw_TOKENTYPE_OPERATOR_ASSIGN 
+				|| parser->tokens[parser->current].type 
+					== erw_TOKENTYPE_OPERATOR_ADDASSIGN 
+				|| parser->tokens[parser->current].type 
+					== erw_TOKENTYPE_OPERATOR_SUBASSIGN 
+				|| parser->tokens[parser->current].type 
+					== erw_TOKENTYPE_OPERATOR_MULASSIGN 
+				|| parser->tokens[parser->current].type 
+					== erw_TOKENTYPE_OPERATOR_DIVASSIGN 
+				|| parser->tokens[parser->current].type 
+					== erw_TOKENTYPE_OPERATOR_POWASSIGN 
+				|| parser->tokens[parser->current].type 
+					== erw_TOKENTYPE_OPERATOR_MODASSIGN)
+				{
+					struct erw_ASTNode* assignnode = erw_ast_new(
+						erw_ASTNODETYPE_ASSIGNMENT,
+						&parser->tokens[parser->current]
+					);
+					parser->current++;
+
+					assignnode->assignment.assignee = identnode;
+					assignnode->assignment.expr = erw_parse_expr(parser);
+					vec_pushback(node->block.stmts, assignnode);
+				}
+				else
+				{
+					log_info("lnmao");
+					goto assignerror; //XXX: Ugly
+				}
+			}
+			else if(parser->tokens[parser->current + 1].type 
 					==  erw_TOKENTYPE_OPERATOR_ASSIGN 
 				|| parser->tokens[parser->current + 1].type 
 					== erw_TOKENTYPE_OPERATOR_ADDASSIGN 
@@ -738,7 +796,6 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 				|| parser->tokens[parser->current + 1].type 
 					== erw_TOKENTYPE_OPERATOR_MODASSIGN)
 			{
-				//TODO: Add support for dereferencing
 				struct erw_ASTNode* identnode = erw_ast_new( 
 					erw_ASTNODETYPE_LITERAL,
 					erw_parser_expect(parser, erw_TOKENTYPE_IDENT)
@@ -756,6 +813,7 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 			}
 			else
 			{
+assignerror:;
 				struct Str msg;
 				str_ctorfmt(
 					&msg,
@@ -873,6 +931,17 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 
 			defernode->defer.block = erw_parse_block(parser);
 			vec_pushback(node->block.stmts, defernode);
+			continue; //Don't require semicolon
+		}
+		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_UNSAFE))
+		{
+			struct erw_ASTNode* unsafenode = erw_ast_new(
+				erw_ASTNODETYPE_UNSAFE,
+				erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_UNSAFE)
+			);
+
+			unsafenode->unsafe.block = erw_parse_block(parser);
+			vec_pushback(node->block.stmts, unsafenode);
 			continue; //Don't require semicolon
 		}
 		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_WHILE))

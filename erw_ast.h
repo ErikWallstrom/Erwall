@@ -49,11 +49,13 @@ extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ENUM;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ENUMMEMBER;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_STRUCT;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNION;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNSAFE;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_REFERENCE;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ARRAY;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_SLICE;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_LITERAL;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_TYPE;
+//Add `dereference` type?
 
 struct erw_ASTNode
 {
@@ -184,6 +186,11 @@ struct erw_ASTNode
 		{
 			Vec(struct erw_ASTNode*) members;
 		} union_;
+
+		struct
+		{
+			struct erw_ASTNode* block;
+		} unsafe;
 
 		struct
 		{

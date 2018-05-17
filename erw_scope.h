@@ -104,7 +104,7 @@ void erw_scope_addtypedeclr(
 	struct erw_ASTNode* node,
 	struct Str* lines
 );
-void erw_scope_print(struct erw_Scope* self);
+void erw_scope_print(struct erw_Scope* self, struct Str* lines);
 void erw_scope_dtor(struct erw_Scope* self);
 
 #endif

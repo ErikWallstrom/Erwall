@@ -175,7 +175,14 @@ static struct erw_Type* erw_getexprtype(
 		{
 			if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
 			{
-				firstnode = firstnode->unexpr.expr;
+				if(firstnode->unexpr.left)
+				{
+					break;
+				}
+				else
+				{
+					firstnode = firstnode->unexpr.expr;
+				}
 			}
 			else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
 			{
@@ -194,7 +201,14 @@ static struct erw_Type* erw_getexprtype(
 		{
 			if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
 			{
-				lastnode = lastnode->unexpr.expr;
+				if(firstnode->unexpr.left)
+				{
+					firstnode = firstnode->unexpr.expr;
+				}
+				else
+				{
+					break;
+				}
 			}
 			else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
 			{
@@ -274,7 +288,14 @@ static struct erw_Type* erw_getexprtype(
 		{
 			if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
 			{
-				firstnode = firstnode->unexpr.expr;
+				if(firstnode->unexpr.left)
+				{
+					break;
+				}
+				else
+				{
+					firstnode = firstnode->unexpr.expr;
+				}
 			}
 			else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
 			{
@@ -293,7 +314,14 @@ static struct erw_Type* erw_getexprtype(
 		{
 			if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
 			{
-				lastnode = lastnode->unexpr.expr;
+				if(firstnode->unexpr.left)
+				{
+					firstnode = firstnode->unexpr.expr;
+				}
+				else
+				{
+					break;
+				}
 			}
 			else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
 			{
@@ -511,7 +539,14 @@ static void erw_checkexprtype(
 		{
 			if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
 			{
-				firstnode = firstnode->unexpr.expr;
+				if(firstnode->unexpr.left)
+				{
+					break;
+				}
+				else
+				{
+					firstnode = firstnode->unexpr.expr;
+				}
 			}
 			else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
 			{
@@ -530,7 +565,14 @@ static void erw_checkexprtype(
 		{
 			if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
 			{
-				lastnode = lastnode->unexpr.expr;
+				if(firstnode->unexpr.left)
+				{
+					firstnode = firstnode->unexpr.expr;
+				}
+				else
+				{
+					break;
+				}
 			}
 			else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
 			{
@@ -630,7 +672,6 @@ static void erw_checkfunccall(
 			type,
 			lines
 		);
-		erw_type_dtor(type);
 	}
 
 	if(strcmp(scope->funcname, callnode->funccall.name->text)) 
@@ -705,7 +746,14 @@ static void erw_checkblock(
 			{
 				if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
 				{
-					firstnode = firstnode->unexpr.expr;
+					if(firstnode->unexpr.left)
+					{
+						break;
+					}
+					else
+					{
+						firstnode = firstnode->unexpr.expr;
+					}
 				}
 				else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
 				{
@@ -724,7 +772,14 @@ static void erw_checkblock(
 			{
 				if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
 				{
-					lastnode = lastnode->unexpr.expr;
+					if(firstnode->unexpr.left)
+					{
+						firstnode = firstnode->unexpr.expr;
+					}
+					else
+					{
+						break;
+					}
 				}
 				else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
 				{
@@ -773,7 +828,14 @@ static void erw_checkblock(
 				{
 					if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
 					{
-						firstnode = firstnode->unexpr.expr;
+						if(firstnode->unexpr.left)
+						{
+							break;
+						}
+						else
+						{
+							firstnode = firstnode->unexpr.expr;
+						}
 					}
 					else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
 					{
@@ -793,7 +855,14 @@ static void erw_checkblock(
 				{
 					if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
 					{
-						lastnode = lastnode->unexpr.expr;
+						if(firstnode->unexpr.left)
+						{
+							firstnode = firstnode->unexpr.expr;
+						}
+						else
+						{
+							break;
+						}
 					}
 					else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
 					{
@@ -946,6 +1015,22 @@ static void erw_checkblock(
 				lines
 			);
 		}
+		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_UNSAFE)
+		{
+			//TODO: Check for unsafe stuff
+			struct erw_Scope* newscope = erw_scope_new(
+				scope, 
+				scope->funcname,
+				vec_getsize(scope->children),
+				0
+			);
+
+			erw_checkblock(
+				newscope, 
+				blocknode->block.stmts[i]->unsafe.block, 
+				lines
+			);
+		}
 		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_WHILE)
 		{
 			struct erw_Type* exprtype = erw_getexprtype(
@@ -963,7 +1048,14 @@ static void erw_checkblock(
 			{
 				if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
 				{
-					firstnode = firstnode->unexpr.expr;
+					if(firstnode->unexpr.left)
+					{
+						break;
+					}
+					else
+					{
+						firstnode = firstnode->unexpr.expr;
+					}
 				}
 				else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
 				{
@@ -983,7 +1075,14 @@ static void erw_checkblock(
 			{
 				if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
 				{
-					lastnode = lastnode->unexpr.expr;
+					if(firstnode->unexpr.left)
+					{
+						firstnode = firstnode->unexpr.expr;
+					}
+					else
+					{
+						break;
+					}
 				}
 				else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
 				{
@@ -1017,9 +1116,16 @@ static void erw_checkblock(
 		}
 		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_ASSIGNMENT)
 		{
+			struct erw_ASTNode* basenode = blocknode->block.stmts[i]->assignment
+				.assignee;
+			while(basenode->type != erw_ASTNODETYPE_LITERAL)
+			{
+				basenode = basenode->unexpr.expr;
+			}
+
 			struct erw_VarDeclr* var = erw_scope_getvar(
 				scope, 
-				blocknode->block.stmts[i]->assignment.assignee->token, 
+				basenode->token,
 				lines
 			);
 
@@ -1055,7 +1161,11 @@ static void erw_checkblock(
 				erw_checkexprtype(
 					scope, 
 					blocknode->block.stmts[i]->assignment.expr, 
-					var->type, 
+					erw_getexprtype(
+						scope, 
+						blocknode->block.stmts[i]->assignment.assignee,
+						lines
+					), 
 					lines
 				);
 				//var->hasvalue = 1;

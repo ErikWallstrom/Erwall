@@ -1,14 +1,15 @@
 " Vim syntax file
 " Language: Erwall
 " Maintainer: Erik Wallström
-" Latest Revision: 19 October 2017
+" Latest Revision: 16 May 2018
 
 if exists("b:current_syntax")
 	finish
 endif
 
 syn keyword Todo TODO FIXME NOTE XXX
-syn keyword Keyword func let mut if elseif else return type cast while
+syn keyword Keyword type func let mut if elseif else return cast while defer 
+	\ unsafe
 syn match Type "\u[[:alnum:]_]\+"
 syn match Variable "\l[[:alnum:]_]\+"
 syn match Number "\d\+"
