@@ -430,12 +430,49 @@ static struct erw_ASTNode* erw_parse_type(struct erw_Parser* parser)
 
 			erw_parser_expect(parser, erw_TOKENTYPE_RBRACKET);
 		}
+		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_FUNC))
+		{
+			tmpnode = erw_ast_new(
+				erw_ASTNODETYPE_FUNCTYPE,
+				erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_FUNC)
+			);
+
+			erw_parser_expect(parser, erw_TOKENTYPE_LPAREN);
+			int first = 1;
+			while(!erw_parser_check(parser, erw_TOKENTYPE_RPAREN))
+			{
+				if(first)
+				{
+					first = 0;
+				}
+				else
+				{
+					erw_parser_expect(parser, erw_TOKENTYPE_COMMA);
+				}
+
+				vec_pushback(tmpnode->functype.params, erw_parse_type(parser));
+				if(!erw_parser_check(parser, erw_TOKENTYPE_COMMA))
+				{
+					break;
+				}
+			}
+
+			erw_parser_expect(parser, erw_TOKENTYPE_RPAREN);
+			if(erw_parser_check(parser, erw_TOKENTYPE_OPERATOR_RETURN))
+			{
+				erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_RETURN);
+				tmpnode->functype.type = erw_parse_type(parser);
+			}
+			
+			done = 1;
+		}
 		else if(erw_parser_check(parser, erw_TOKENTYPE_TYPE))
 		{ 
 			tmpnode = erw_ast_new(
 				erw_ASTNODETYPE_TYPE, 
 				erw_parser_expect(parser, erw_TOKENTYPE_TYPE)
 			);
+
 			done = 1; //Break loop
 		}
 		else

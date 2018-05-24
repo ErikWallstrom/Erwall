@@ -56,6 +56,8 @@ const struct erw_ASTNodeType* const erw_ASTNODETYPE_LITERAL =
 	&(struct erw_ASTNodeType){"Literal"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_TYPE = 
 	&(struct erw_ASTNodeType){"Named Type"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNCTYPE =
+	&(struct erw_ASTNodeType){"Function Type"};
 
 struct erw_ASTNode* erw_ast_new(
 	const struct erw_ASTNodeType* type, 
@@ -105,6 +107,10 @@ struct erw_ASTNode* erw_ast_new(
 	else if(self->type == erw_ASTNODETYPE_UNION)
 	{
 		self->union_.members = vec_ctor(struct erw_ASTNode*, 0);
+	}
+	else if(self->type == erw_ASTNODETYPE_FUNCTYPE)
+	{
+		self->functype.params = vec_ctor(struct erw_ASTNode*, 0);
 	}
 
 	return self;
@@ -289,6 +295,15 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 		{
 			erw_ast_printinternal(ast->slice.type, level + 1);
 		}
+		else if(ast->type == erw_ASTNODETYPE_FUNCTYPE)
+		{
+			for(size_t i = 0; i < vec_getsize(ast->functype.params); i++)
+			{
+				erw_ast_printinternal(ast->functype.params[i], level + 1);
+			}
+
+			erw_ast_printinternal(ast->functype.type, level + 1);
+		}
 		else if(ast->type == erw_ASTNODETYPE_TYPE) { }
 		else if(ast->type == erw_ASTNODETYPE_LITERAL) { }
 		else
@@ -467,6 +482,16 @@ void erw_ast_dtor(struct erw_ASTNode* ast)
 	else if(ast->type == erw_ASTNODETYPE_SLICE)
 	{
 		erw_ast_dtor(ast->slice.type);
+	}
+	else if(ast->type == erw_ASTNODETYPE_FUNCTYPE)
+	{
+		for(size_t i = 0; i < vec_getsize(ast->functype.params); i++)
+		{
+			erw_ast_dtor(ast->functype.params[i]);
+		}
+
+		vec_dtor(ast->functype.params);
+		erw_ast_dtor(ast->functype.type);
 	}
 	else if(ast->type == erw_ASTNODETYPE_TYPE) { }
 	else if(ast->type == erw_ASTNODETYPE_LITERAL) { }

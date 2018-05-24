@@ -4,7 +4,6 @@ type Weekdays: enum(monday, tuesday = 4, wednesday, friday);
 
 func player_ctor: (let self: &Player) -> &Player
 {
-	self& += cast(Player, 2);
 	return self;
 }
 
@@ -19,6 +18,8 @@ func main: () -> Int32
 	player_ctor(&p);
 
 	let c: Char = 'M';
+
+	let f: func(Int32, &Float32) -> Float32 = test;
 	return 0;
 }
 

@@ -201,6 +201,31 @@ struct Str erw_type_tostring(struct erw_Type* type)
 			str_appendfmt(&str, "[%zu]", type->array.elements);
 			type = type->array.type;
 		}
+		else if(type->info == erw_TYPEINFO_FUNC)
+		{
+			str_append(&str, "func(");
+			for(size_t i = 0; i < vec_getsize(type->func.params); i++)
+			{	
+				struct Str tmp = erw_type_tostring(type->func.params[i]);
+				str_append(&str, tmp.data);
+				str_dtor(&tmp);
+
+				if(i < vec_getsize(type->func.params) - 1)
+				{
+					str_append(&str, ", ");
+				}
+			}
+
+			str_append(&str, ")");
+			
+			if(type->func.type)
+			{
+				struct Str tmp = erw_type_tostring(type->func.type);
+				str_appendfmt(&str, " -> %s", tmp.data);
+				str_dtor(&tmp);
+			}
+			break;
+		}
 		else
 		{
 			log_assert(0, "this shouldn't happen (%i)", type->info);
@@ -243,6 +268,7 @@ struct Str erw_type_tostring(struct erw_Type* type)
 	{
 		str_append(&str, "Builtin Empty"); //TODO: Improve this
 	}
+	else if(type->info == erw_TYPEINFO_FUNC) { }
 	else
 	{
 		log_assert(0, "this shouldn't happen (%i)", type->info);
@@ -295,6 +321,28 @@ int erw_type_compare(struct erw_Type* type1, struct erw_Type* type2)
 			return 0;
 		}
 	}
+	else if(type1->info == erw_TYPEINFO_FUNC)
+	{
+		size_t numparams1 = vec_getsize(type1->func.params);
+		size_t numparams2 = vec_getsize(type2->func.params);
+		if(numparams1 != numparams2)
+		{
+			return 0;
+		}
+
+		for(size_t i = 0; i < numparams1; i++)
+		{
+			int result = erw_type_compare(
+				type1->func.params[i], 
+				type2->func.params[i]
+			);
+
+			if(!result)
+			{
+				return 0;
+			}
+		}
+	}
 	else
 	{
 		log_assert(0, "this shouldn't happen (%i)'", type1->info);
@@ -306,6 +354,13 @@ int erw_type_compare(struct erw_Type* type1, struct erw_Type* type2)
 void erw_type_dtor(struct erw_Type* self)
 {
 	log_assert(self, "is NULL");
+	for(size_t i = 0; i < erw_TYPEBUILTIN_COUNT; i++)
+	{
+		if(self == erw_type_builtins[i])
+		{
+			return;
+		}
+	}
 
 	if(self->info == erw_TYPEINFO_STRUCT)
 	{
@@ -323,7 +378,25 @@ void erw_type_dtor(struct erw_Type* self)
 	{
 		vec_dtor(self->func.params);
 	}
+	/*
+	else if(self->info == erw_TYPEINFO_NAMED)
+	{
+		erw_type_dtor(self->named.type);
+	}
+	else if(self->info == erw_TYPEINFO_ARRAY)
+	{
+		erw_type_dtor(self->array.type);
+	}
+	else if(self->info == erw_TYPEINFO_SLICE)
+	{
+		erw_type_dtor(self->slice.type);
+	}
+	else if(self->info == erw_TYPEINFO_REFERENCE)
+	{
+		erw_type_dtor(self->reference.type);
+	}
 
 	free(self);
+	*/
 }
 

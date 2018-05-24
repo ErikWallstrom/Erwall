@@ -55,6 +55,7 @@ extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ARRAY;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_SLICE;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_LITERAL;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_TYPE;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNCTYPE;
 //Add `dereference` type?
 
 struct erw_ASTNode
@@ -207,6 +208,12 @@ struct erw_ASTNode
 		{
 			struct erw_ASTNode* type;
 		} slice;
+
+		struct
+		{
+			Vec(struct erw_ASTNode*) params;
+			struct erw_ASTNode* type;
+		} functype;
 	};
 
 	const struct erw_ASTNodeType* type;

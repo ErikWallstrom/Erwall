@@ -220,8 +220,9 @@ static struct erw_Type* erw_getexprtype(
 	if(exprnode->type == erw_ASTNODETYPE_CAST)
 	{
 		//TODO: Check if types are compatible
-		ret = erw_scope_createtype(scope, exprnode->cast.type, lines);
-		erw_getexprtype(scope, exprnode->cast.expr, lines); //Check for errors
+		ret = erw_scope_createtype(scope, exprnode->cast.type, lines); 
+		//Check for errors
+		erw_type_dtor(erw_getexprtype(scope, exprnode->cast.expr, lines));
 	}
 	else if(exprnode->type == erw_ASTNODETYPE_BINEXPR)
 	{
@@ -230,6 +231,7 @@ static struct erw_Type* erw_getexprtype(
 			exprnode->binexpr.expr1, 
 			lines
 		);
+
 		struct erw_Type* typesym2 = erw_getexprtype(
 			scope, 
 			exprnode->binexpr.expr2, 
@@ -278,23 +280,28 @@ static struct erw_Type* erw_getexprtype(
 		{
 			ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
 			erw_checknumerical(typesym1, firstnode, lastnode, lines);
+			erw_type_dtor(typesym1);
 		}
 		else if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_EQUAL 
 			|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_NOTEQUAL)
 		{
 			ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
+			erw_type_dtor(typesym1);
 		}
 		else if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_OR 
 			|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_AND)
 		{
 			ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
 			erw_checkboolean(typesym1, firstnode, lastnode, lines);
+			erw_type_dtor(typesym1);
 		}
 		else
 		{
 			ret = typesym1;
 			erw_checknumerical(ret, firstnode, lastnode, lines);
 		}
+
+		erw_type_dtor(typesym2);
 	}
 	else if(exprnode->type == erw_ASTNODETYPE_UNEXPR)
 	{
@@ -517,6 +524,8 @@ static void erw_checkexprtype(
 		);
 		str_dtor(&msg);
 	}
+
+	erw_type_dtor(type2);
 }
 
 static void erw_checkfunccall(
@@ -577,6 +586,8 @@ static void erw_checkfunccall(
 			type,
 			lines
 		);
+
+		erw_type_dtor(type);
 	}
 
 	if(strcmp(scope->funcname, callnode->funccall.name->text)) 
@@ -656,6 +667,8 @@ static void erw_checkblock(
 					vartype, 
 					lines
 				);
+
+				erw_type_dtor(vartype);
 			}
 		}
 		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_IF)
@@ -675,6 +688,7 @@ static void erw_checkblock(
 			);
 
 			erw_checkboolean(iftype, firstnode, lastnode, lines);
+			erw_type_dtor(iftype);
 			struct erw_Scope* newscope = erw_scope_new(
 				scope, 
 				scope->funcname,
@@ -705,6 +719,7 @@ static void erw_checkblock(
 				);
 
 				erw_checkboolean(elseiftype, firstnode, lastnode, lines);
+				erw_type_dtor(elseiftype);
 				newscope = erw_scope_new(
 					scope, 
 					scope->funcname,
@@ -872,6 +887,7 @@ static void erw_checkblock(
 			);
 
 			erw_checkboolean(exprtype, firstnode, lastnode, lines);
+			erw_type_dtor(exprtype);
 			struct erw_Scope* newscope = erw_scope_new(
 				scope, 
 				scope->funcname,
@@ -912,6 +928,7 @@ static void erw_checkblock(
 				lines
 			);
 
+			erw_type_dtor(type);
 			if(blocknode->block.stmts[i]->token->type 
 				!= erw_TOKENTYPE_OPERATOR_ASSIGN) //Fix firstnode?
 			{ 
