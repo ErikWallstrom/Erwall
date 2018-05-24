@@ -2,6 +2,75 @@
 #include "erw_error.h"
 #include "log.h"
 
+static struct erw_ASTNode* erw_getfirstnode(struct erw_ASTNode* expr)
+{
+	struct erw_ASTNode* firstnode = expr;
+	while(firstnode->type == erw_ASTNODETYPE_UNEXPR 
+		|| firstnode->type == erw_ASTNODETYPE_BINEXPR
+		|| firstnode->type == erw_ASTNODETYPE_CAST
+		|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
+	{
+		if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
+		{
+			if(firstnode->unexpr.left)
+			{
+				break;
+			}
+			else
+			{
+				firstnode = firstnode->unexpr.expr;
+			}
+		}
+		else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
+		{
+			firstnode = firstnode->binexpr.expr1;
+		}
+		else if(firstnode->type == erw_ASTNODETYPE_CAST
+			|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
+		{
+			break;
+		}
+	}
+
+	return firstnode;
+}
+
+static struct erw_ASTNode* erw_getlastnode(struct erw_ASTNode* expr)
+{
+	struct erw_ASTNode* lastnode = expr;
+	while(lastnode->type == erw_ASTNODETYPE_UNEXPR 
+		|| lastnode->type == erw_ASTNODETYPE_BINEXPR)
+	{
+		if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
+		{
+			if(lastnode->unexpr.left)
+			{
+				lastnode = lastnode->unexpr.expr;
+			}
+			else
+			{
+				break;
+			}
+		}
+		else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
+		{
+			lastnode = lastnode->binexpr.expr2;
+		}
+		else if(lastnode->type == erw_ASTNODETYPE_CAST)
+		{
+			lastnode = lastnode->cast.expr;
+		}
+		else if(lastnode->type == erw_ASTNODETYPE_FUNCCALL)
+		{
+			lastnode = lastnode->funccall.args[
+				vec_getsize(lastnode->funccall.args) - 1
+			];
+		}
+	}
+
+	return lastnode;
+}
+
 static void erw_checkboolean(
 	struct erw_Type* type,
 	struct erw_ASTNode* firstnode,
@@ -167,64 +236,13 @@ static struct erw_Type* erw_getexprtype(
 			lines
 		);
 
-		struct erw_ASTNode* firstnode = exprnode->binexpr.expr1;
-		while(firstnode->type == erw_ASTNODETYPE_UNEXPR 
-			|| firstnode->type == erw_ASTNODETYPE_BINEXPR
-			|| firstnode->type == erw_ASTNODETYPE_CAST
-			|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-		{
-			if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
-			{
-				if(firstnode->unexpr.left)
-				{
-					break;
-				}
-				else
-				{
-					firstnode = firstnode->unexpr.expr;
-				}
-			}
-			else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
-			{
-				firstnode = firstnode->binexpr.expr1;
-			}
-			else if(firstnode->type == erw_ASTNODETYPE_CAST
-				|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-			{
-				break;
-			}
-		}
+		struct erw_ASTNode* firstnode = erw_getfirstnode(
+			exprnode->binexpr.expr1
+		);
 
-		struct erw_ASTNode* lastnode = exprnode->binexpr.expr2;
-		while(lastnode->type == erw_ASTNODETYPE_UNEXPR 
-			|| lastnode->type == erw_ASTNODETYPE_BINEXPR)
-		{
-			if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
-			{
-				if(firstnode->unexpr.left)
-				{
-					firstnode = firstnode->unexpr.expr;
-				}
-				else
-				{
-					break;
-				}
-			}
-			else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
-			{
-				lastnode = lastnode->binexpr.expr2;
-			}
-			else if(lastnode->type == erw_ASTNODETYPE_CAST)
-			{
-				lastnode = lastnode->cast.expr;
-			}
-			else if(lastnode->type == erw_ASTNODETYPE_FUNCCALL)
-			{
-				lastnode = lastnode->funccall.args[
-					vec_getsize(lastnode->funccall.args) - 1
-				];
-			}
-		}
+		struct erw_ASTNode* lastnode = erw_getlastnode(
+			exprnode->binexpr.expr2
+		);
 
 		if(!erw_type_compare(typesym1, typesym1))
 		{
@@ -280,65 +298,8 @@ static struct erw_Type* erw_getexprtype(
 	}
 	else if(exprnode->type == erw_ASTNODETYPE_UNEXPR)
 	{
-		struct erw_ASTNode* firstnode = exprnode->unexpr.expr;
-		while(firstnode->type == erw_ASTNODETYPE_UNEXPR 
-			|| firstnode->type == erw_ASTNODETYPE_BINEXPR
-			|| firstnode->type == erw_ASTNODETYPE_CAST
-			|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-		{
-			if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
-			{
-				if(firstnode->unexpr.left)
-				{
-					break;
-				}
-				else
-				{
-					firstnode = firstnode->unexpr.expr;
-				}
-			}
-			else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
-			{
-				firstnode = firstnode->binexpr.expr1;
-			}
-			else if(firstnode->type == erw_ASTNODETYPE_CAST
-				|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-			{
-				break;
-			}
-		}
-
-		struct erw_ASTNode* lastnode = exprnode->unexpr.expr;
-		while(lastnode->type == erw_ASTNODETYPE_UNEXPR 
-			|| lastnode->type == erw_ASTNODETYPE_BINEXPR)
-		{
-			if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
-			{
-				if(firstnode->unexpr.left)
-				{
-					firstnode = firstnode->unexpr.expr;
-				}
-				else
-				{
-					break;
-				}
-			}
-			else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
-			{
-				lastnode = lastnode->binexpr.expr2;
-			}
-			else if(lastnode->type == erw_ASTNODETYPE_CAST)
-			{
-				lastnode = lastnode->cast.expr;
-			}
-			else if(lastnode->type == erw_ASTNODETYPE_FUNCCALL)
-			{
-				lastnode = lastnode->funccall.args[
-					vec_getsize(lastnode->funccall.args) - 1
-				];
-			}
-		}
-
+		struct erw_ASTNode* firstnode = erw_getfirstnode(exprnode->unexpr.expr);
+		struct erw_ASTNode* lastnode = erw_getlastnode(exprnode->unexpr.expr);
 		if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_BITAND)
 		{
 			if(exprnode->unexpr.left)
@@ -531,64 +492,8 @@ static void erw_checkexprtype(
 	struct erw_Type* type2 = erw_getexprtype(scope, exprnode, lines);
 	if(!erw_type_compare(type, type2))
 	{
-		struct erw_ASTNode* firstnode = exprnode;
-		while(firstnode->type == erw_ASTNODETYPE_UNEXPR 
-			|| firstnode->type == erw_ASTNODETYPE_BINEXPR
-			|| firstnode->type == erw_ASTNODETYPE_CAST
-			|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-		{
-			if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
-			{
-				if(firstnode->unexpr.left)
-				{
-					break;
-				}
-				else
-				{
-					firstnode = firstnode->unexpr.expr;
-				}
-			}
-			else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
-			{
-				firstnode = firstnode->binexpr.expr1;
-			}
-			else if(firstnode->type == erw_ASTNODETYPE_CAST
-				|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-			{
-				break;
-			}
-		}
-
-		struct erw_ASTNode* lastnode = exprnode;
-		while(lastnode->type == erw_ASTNODETYPE_UNEXPR 
-			|| lastnode->type == erw_ASTNODETYPE_BINEXPR)
-		{
-			if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
-			{
-				if(firstnode->unexpr.left)
-				{
-					firstnode = firstnode->unexpr.expr;
-				}
-				else
-				{
-					break;
-				}
-			}
-			else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
-			{
-				lastnode = lastnode->binexpr.expr2;
-			}
-			else if(lastnode->type == erw_ASTNODETYPE_CAST)
-			{
-				lastnode = lastnode->cast.expr;
-			}
-			else if(lastnode->type == erw_ASTNODETYPE_FUNCCALL)
-			{
-				lastnode = lastnode->funccall.args[
-					vec_getsize(lastnode->funccall.args) - 1
-				];
-			}
-		}
+		struct erw_ASTNode* firstnode = erw_getfirstnode(exprnode);
+		struct erw_ASTNode* lastnode = erw_getlastnode(exprnode);
 
 		struct Str typestr = erw_type_tostring(type);
 		struct Str type2str = erw_type_tostring(type2);
@@ -761,64 +666,13 @@ static void erw_checkblock(
 				lines
 			);
 
-			struct erw_ASTNode* firstnode = blocknode->block.stmts[i]->if_.expr;
-			while(firstnode->type == erw_ASTNODETYPE_UNEXPR 
-				|| firstnode->type == erw_ASTNODETYPE_BINEXPR
-				|| firstnode->type == erw_ASTNODETYPE_CAST
-				|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-			{
-				if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
-				{
-					if(firstnode->unexpr.left)
-					{
-						break;
-					}
-					else
-					{
-						firstnode = firstnode->unexpr.expr;
-					}
-				}
-				else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
-				{
-					firstnode = firstnode->binexpr.expr1;
-				}
-				else if(firstnode->type == erw_ASTNODETYPE_CAST
-					|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-				{
-					break;
-				}
-			}
+			struct erw_ASTNode* firstnode = erw_getfirstnode(
+				blocknode->block.stmts[i]->if_.expr
+			);
 
-			struct erw_ASTNode* lastnode = blocknode->block.stmts[i]->if_.expr;
-			while(lastnode->type == erw_ASTNODETYPE_UNEXPR 
-				|| lastnode->type == erw_ASTNODETYPE_BINEXPR)
-			{
-				if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
-				{
-					if(firstnode->unexpr.left)
-					{
-						firstnode = firstnode->unexpr.expr;
-					}
-					else
-					{
-						break;
-					}
-				}
-				else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
-				{
-					lastnode = lastnode->binexpr.expr2;
-				}
-				else if(lastnode->type == erw_ASTNODETYPE_CAST)
-				{
-					lastnode = lastnode->cast.expr;
-				}
-				else if(lastnode->type == erw_ASTNODETYPE_FUNCCALL)
-				{
-					lastnode = lastnode->funccall.args[
-						vec_getsize(lastnode->funccall.args) - 1
-					];
-				}
-			}
+			struct erw_ASTNode* lastnode = erw_getlastnode(
+				blocknode->block.stmts[i]->if_.expr
+			);
 
 			erw_checkboolean(iftype, firstnode, lastnode, lines);
 			struct erw_Scope* newscope = erw_scope_new(
@@ -842,66 +696,13 @@ static void erw_checkblock(
 					blocknode->block.stmts[i]->if_.elseifs[j]->elseif.expr, 
 					lines
 				);
-				firstnode = blocknode->block.stmts[i]->if_.elseifs[j]->elseif
-					.expr;
-				while(firstnode->type == erw_ASTNODETYPE_UNEXPR 
-					|| firstnode->type == erw_ASTNODETYPE_BINEXPR
-					|| firstnode->type == erw_ASTNODETYPE_CAST
-					|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-				{
-					if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
-					{
-						if(firstnode->unexpr.left)
-						{
-							break;
-						}
-						else
-						{
-							firstnode = firstnode->unexpr.expr;
-						}
-					}
-					else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
-					{
-						firstnode = firstnode->binexpr.expr1;
-					}
-					else if(firstnode->type == erw_ASTNODETYPE_CAST
-						|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-					{
-						break;
-					}
-				}
+				firstnode = erw_getfirstnode(
+					blocknode->block.stmts[i]->if_.elseifs[j]->elseif.expr
+				);
 
-				lastnode = blocknode->block.stmts[i]->if_.elseifs[j]->elseif
-					.expr;
-				while(lastnode->type == erw_ASTNODETYPE_UNEXPR 
-					|| lastnode->type == erw_ASTNODETYPE_BINEXPR)
-				{
-					if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
-					{
-						if(firstnode->unexpr.left)
-						{
-							firstnode = firstnode->unexpr.expr;
-						}
-						else
-						{
-							break;
-						}
-					}
-					else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
-					{
-						lastnode = lastnode->binexpr.expr2;
-					}
-					else if(lastnode->type == erw_ASTNODETYPE_CAST)
-					{
-						lastnode = lastnode->cast.expr;
-					}
-					else if(lastnode->type == erw_ASTNODETYPE_FUNCCALL)
-					{
-						lastnode = lastnode->funccall.args[
-							vec_getsize(lastnode->funccall.args) - 1
-						];
-					}
-				}
+				lastnode = erw_getlastnode(
+					blocknode->block.stmts[i]->if_.elseifs[j]->elseif .expr
+				);
 
 				erw_checkboolean(elseiftype, firstnode, lastnode, lines);
 				newscope = erw_scope_new(
@@ -1062,66 +863,13 @@ static void erw_checkblock(
 				lines
 			);
 
-			struct erw_ASTNode* firstnode = blocknode->block.stmts[i]->while_
-				.expr;
-			while(firstnode->type == erw_ASTNODETYPE_UNEXPR 
-				|| firstnode->type == erw_ASTNODETYPE_BINEXPR
-				|| firstnode->type == erw_ASTNODETYPE_CAST
-				|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-			{
-				if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
-				{
-					if(firstnode->unexpr.left)
-					{
-						break;
-					}
-					else
-					{
-						firstnode = firstnode->unexpr.expr;
-					}
-				}
-				else if(firstnode->type == erw_ASTNODETYPE_BINEXPR)
-				{
-					firstnode = firstnode->binexpr.expr1;
-				}
-				else if(firstnode->type == erw_ASTNODETYPE_CAST
-					|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
-				{
-					break;
-				}
-			}
+			struct erw_ASTNode* firstnode = erw_getfirstnode(
+				blocknode->block.stmts[i]->while_ .expr
+			);
 
-			struct erw_ASTNode* lastnode = blocknode->block.stmts[i]->while_
-				.expr;
-			while(lastnode->type == erw_ASTNODETYPE_UNEXPR 
-				|| lastnode->type == erw_ASTNODETYPE_BINEXPR)
-			{
-				if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
-				{
-					if(firstnode->unexpr.left)
-					{
-						firstnode = firstnode->unexpr.expr;
-					}
-					else
-					{
-						break;
-					}
-				}
-				else if(lastnode->type == erw_ASTNODETYPE_BINEXPR)
-				{
-					lastnode = lastnode->binexpr.expr2;
-				}
-				else if(lastnode->type == erw_ASTNODETYPE_CAST)
-				{
-					lastnode = lastnode->cast.expr;
-				}
-				else if(lastnode->type == erw_ASTNODETYPE_FUNCCALL)
-				{
-					lastnode = lastnode->funccall.args[
-						vec_getsize(lastnode->funccall.args) - 1
-					];
-				}
-			}
+			struct erw_ASTNode* lastnode = erw_getlastnode(
+				blocknode->block.stmts[i]->while_.expr
+			);
 
 			erw_checkboolean(exprtype, firstnode, lastnode, lines);
 			struct erw_Scope* newscope = erw_scope_new(
@@ -1152,6 +900,31 @@ static void erw_checkblock(
 				lines
 			);
 
+			struct erw_Type* type = erw_getexprtype(
+				scope, 
+				blocknode->block.stmts[i]->assignment.assignee,
+				lines
+			);
+			erw_checkexprtype(
+				scope, 
+				blocknode->block.stmts[i]->assignment.expr, 
+				type,
+				lines
+			);
+
+			if(blocknode->block.stmts[i]->token->type 
+				!= erw_TOKENTYPE_OPERATOR_ASSIGN) //Fix firstnode?
+			{ 
+				struct erw_ASTNode* firstnode = erw_getfirstnode(
+					blocknode->block.stmts[i]->assignment.expr
+				);
+				struct erw_ASTNode* lastnode = erw_getlastnode(
+					blocknode->block.stmts[i]->assignment.expr
+				);
+				
+				erw_checknumerical(type, firstnode, lastnode, lines);
+			}
+
 			/* TODO: Implement this
 			if(var->node->vardeclr.mutable || !var->hasvalue)
 			{
@@ -1180,17 +953,6 @@ static void erw_checkblock(
 					}
 				}
 				*/
-
-				erw_checkexprtype(
-					scope, 
-					blocknode->block.stmts[i]->assignment.expr, 
-					erw_getexprtype(
-						scope, 
-						blocknode->block.stmts[i]->assignment.assignee,
-						lines
-					), 
-					lines
-				);
 				//var->hasvalue = 1;
 			/*
 			}
