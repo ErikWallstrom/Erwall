@@ -128,8 +128,6 @@ static void onerror(void* udata)
 	abort();
 }
 
-#include <time.h>
-
 int main(int argc, char* argv[])
 {
 	double timetotal = getperformancecount();

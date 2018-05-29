@@ -115,6 +115,7 @@ static void erw_checkboolean(
 				: lines[firstnode->token->linenum - 1].len
 		);
 		str_dtor(&msg);
+		str_dtor(&typename);
 	}
 }
 
@@ -437,11 +438,45 @@ static struct erw_Type* erw_getexprtype(
 		}
 		else if(exprnode->token->type == erw_TOKENTYPE_IDENT)
 		{
-			struct erw_VarDeclr* var = erw_scope_getvar(
+			struct erw_VarDeclr* var = erw_scope_findvar(
 				scope, 
-				exprnode->token,
-				lines
+				exprnode->token->text
 			);
+
+			struct erw_FuncDeclr* func = erw_scope_findfunc(
+				scope, 
+				exprnode->token->text
+			);
+
+			if(!var && !func)
+			{ 
+				struct Str msg;
+				str_ctor(
+					&msg,
+					"Undefined identifier"
+				);
+
+				erw_error(
+					msg.data, 
+					lines[exprnode->token->linenum - 1].data, 
+					exprnode->token->linenum, 
+					exprnode->token->column,
+					exprnode->token->column + vec_getsize(exprnode->token->text)
+						- 2
+				);
+				str_dtor(&msg);
+			}
+
+			if(var)
+			{
+				var->used = 1;
+				ret = var->type;
+			}
+			else //func
+			{
+				func->used = 1;
+				ret = erw_scope_createtype(scope, func->node, lines);
+			}
 
 			/* TODO: Implement this
 			if(!var->hasvalue)
@@ -465,9 +500,6 @@ static struct erw_Type* erw_getexprtype(
 				str_dtor(&msg);
 			}
 			*/
-
-			var->used = 1;
-			ret = var->type;
 		}
 		else
 		{
@@ -1247,6 +1279,35 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 	}
 }
 
+void erw_checkmain(struct erw_Scope* scope, struct Str* lines)
+{
+	log_assert(scope, "is NULL");
+	log_assert(lines, "is NULL");
+
+	struct erw_FuncDeclr* func = erw_scope_findfunc(scope, "main");
+	if(!func)
+	{
+		erw_error("No main function found", NULL, 0, 0, 0);
+	}
+	
+	if(!func->type 
+		|| !erw_type_compare(
+			func->type, 
+			erw_type_builtins[erw_TYPEBUILTIN_INT32]))
+	{
+		erw_error(
+			"Expected main to return 'Int32'",
+			lines[func->node->funcdef.name->linenum - 1].data,
+			func->node->funcdef.name->linenum,
+			func->node->funcdef.name->column,
+			func->node->funcdef.name->column +
+				vec_getsize(func->node->funcdef.name->text) - 2
+		);
+	}
+
+	//TODO: Check for parameters
+}
+
 struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 {
 	log_assert(ast, "is NULL");
@@ -1274,7 +1335,6 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 		);
 	}
 
-	//TODO: semantic check for main function
 	for(size_t i = 0; i < vec_getsize(ast->start.children); i++)
 	{
 		if(ast->start.children[i]->type == erw_ASTNODETYPE_FUNCDEF)
@@ -1288,6 +1348,7 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 	}
 
 	erw_checkreturn(globalscope, lines);
+	erw_checkmain(globalscope, lines);
 	erw_checkunused(globalscope, lines);
 	return globalscope;
 }

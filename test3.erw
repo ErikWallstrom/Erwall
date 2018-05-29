@@ -1,25 +1,20 @@
-type Player: struct();
-type Union: union(Int32, Player, Float32);
-type Weekdays: enum(monday, tuesday = 4, wednesday, friday);
+type Player: struct(
+	mut x: Int32,
+	mut y: Int32
+);
 
-func player_ctor: (let self: &Player) -> &Player
+func test: (let p_ref: &Player)
 {
-	return self;
-}
-
-func test: ()
-{
-	
+	p_ref&.x = 3;
+	p_ref&.y = 97;
 }
 
 func main: () -> Int32
 {
+
 	let p: Player;
-	player_ctor(&p);
+	p.x = 12;
+	p.y = 44;
 
-	let c: Char = 'M';
-
-	let f: func(Int32, &Float32) -> Float32 = test;
-	return 0;
+	test(&p);
 }
-

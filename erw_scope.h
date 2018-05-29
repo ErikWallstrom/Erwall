@@ -69,6 +69,14 @@ struct erw_Scope* erw_scope_new(
 	size_t index,
 	int isfunction
 );
+struct erw_VarDeclr* erw_scope_findvar(
+	struct erw_Scope* self, 
+	const char* name
+);
+struct erw_FuncDeclr* erw_scope_findfunc(
+	struct erw_Scope* self, 
+	const char* name
+);
 struct erw_VarDeclr* erw_scope_getvar(
 	struct erw_Scope* self, 
 	struct erw_Token* token,

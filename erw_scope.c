@@ -24,9 +24,7 @@
 
 #include <stdlib.h>
 
-static struct erw_VarDeclr* erw_scope_findvar(
-	struct erw_Scope* self, 
-	const char* name)
+struct erw_VarDeclr* erw_scope_findvar(struct erw_Scope* self, const char* name)
 {
 	log_assert(self, "is NULL");
 	log_assert(name, "is NULL");
@@ -59,7 +57,7 @@ static struct erw_VarDeclr* erw_scope_findvar(
 	return NULL;
 }
 
-static struct erw_FuncDeclr* erw_scope_findfunc(
+struct erw_FuncDeclr* erw_scope_findfunc(
 	struct erw_Scope* self, 
 	const char* name)
 {
@@ -279,6 +277,27 @@ struct erw_Type* erw_scope_createtype(
 				vec_pushback(
 					tmptype->func.params, 
 					erw_scope_createtype(self, node->functype.params[i], lines);
+				);
+			}
+
+			done = 1; //Break loop
+		}
+		else if(node->type == erw_ASTNODETYPE_FUNCDEF)
+		{
+			tmptype = erw_type_new(erw_TYPEINFO_FUNC, type);
+			tmptype->func.type = node->funcdef.type 
+				? erw_scope_createtype(
+						self, 
+						node->funcdef.type, 
+						lines
+					)
+				: NULL;
+			tmptype->func.size = sizeof(void(*)(void));
+			for(size_t i = 0; i < vec_getsize(node->funcdef.params); i++)
+			{
+				vec_pushback(
+					tmptype->func.params, 
+					erw_scope_createtype(self, node->funcdef.params[i], lines);
 				);
 			}
 

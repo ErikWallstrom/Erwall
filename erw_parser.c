@@ -117,7 +117,6 @@ static struct erw_ASTNode* erw_parse_deref(struct erw_Parser* parser)
 		node = newnode;
 	}
 
-	log_info("Hello");
 	return node;
 }
 
@@ -814,7 +813,6 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 				}
 				else
 				{
-					log_info("lnmao");
 					goto assignerror; //XXX: Ugly
 				}
 			}

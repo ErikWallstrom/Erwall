@@ -39,23 +39,23 @@ void erw_error(
 	struct ANSICode markcolor = {.fg = ANSICODE_FG_MAGENTA, .bold = 1};
 
 	ansicode_fprintf(&errcolor, stderr, "\nError: ");
-	fprintf(stderr, "(line ");
-	ansicode_fprintf(&numcolor, stderr, "%zu", linenum);
-	fprintf(stderr, ", column ");
-	ansicode_fprintf(&numcolor, stderr, "%zu", column);
-
-	size_t printpos = 0;
-	for(; printpos < strlen(line); printpos++)
+	if(line)
 	{
-		if(!isblank(line[printpos]))
+		fprintf(stderr, "(line ");
+		ansicode_fprintf(&numcolor, stderr, "%zu", linenum);
+		fprintf(stderr, ", column ");
+		ansicode_fprintf(&numcolor, stderr, "%zu", column);
+		fprintf(stderr, "): %s", msg);
+
+		size_t printpos = 0;
+		for(; printpos < strlen(line); printpos++)
 		{
-			break;
+			if(!isblank(line[printpos]))
+			{
+				break;
+			}
 		}
-	}
 
-	fprintf(stderr, "): %s", msg);
-	if(linenum)
-	{
 		fprintf(stderr, "\n\n    %s\n    ", line + printpos);
 		for(size_t i = 0; i < column - printpos - 1; i++)
 		{
@@ -68,6 +68,10 @@ void erw_error(
 			ansicode_fprintf(&markcolor, stderr, "~");
 		}
 		fprintf(stderr, "\n\n");
+	}
+	else
+	{
+		fprintf(stderr, "%s\n", msg);
 	}
 
 	abort();
