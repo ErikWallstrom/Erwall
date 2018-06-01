@@ -147,7 +147,7 @@ struct erw_ASTNode
 		struct
 		{
 			Vec(struct erw_ASTNode*) args;
-			struct erw_Token* name;
+			struct erw_ASTNode* callee;
 		} funccall;
 
 		struct

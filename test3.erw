@@ -1,13 +1,20 @@
 type Player: struct(
 	mut x: Int32,
-	mut y: Int32
+	mut y: Int32,
+	let update: func(Int32)
 );
 
 type Players: struct(let players: []Player);
 
 func test: (let x: Int32) 
 {
-	
+	type Result: union(Int32, &Player);
+	let t: Result;
+	#[
+	test.Int32 = 33;
+	test.&Player = &p;
+	test.[3]Lol = 44;
+	#]
 }
 
 func main: () -> Int32
@@ -17,8 +24,13 @@ func main: () -> Int32
 
 	let p: Players;
 	let p_ref: &Players = &p;
+	p_ref&.players[0].update = test;
 
 	test(p_ref&.players[2].y);
+	test(p_ref&.players[0].x);
+	p.players[0].x = 44;
+
+	p.players[0].update(44);
 	return 0;
 }
 

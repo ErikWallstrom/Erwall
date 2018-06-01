@@ -234,7 +234,7 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 		}
 		else if(ast->type == erw_ASTNODETYPE_FUNCCALL)
 		{
-			erw_ast_printinternaltoken(ast->funccall.name, level + 1);
+			erw_ast_printinternal(ast->funccall.callee, level + 1);
 			for(size_t i = 0; i < vec_getsize(ast->funccall.args); i++)
 			{
 				erw_ast_printinternal(ast->funccall.args[i], level + 1);
@@ -421,6 +421,7 @@ void erw_ast_dtor(struct erw_ASTNode* ast)
 	}
 	else if(ast->type == erw_ASTNODETYPE_FUNCCALL)
 	{
+		erw_ast_dtor(ast->funccall.callee);
 		for(size_t i = 0; i < vec_getsize(ast->funccall.args); i++)
 		{
 			erw_ast_dtor(ast->funccall.args[i]);

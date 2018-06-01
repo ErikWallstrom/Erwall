@@ -507,6 +507,7 @@ static struct erw_Type* erw_getexprtype(
 			lines
 		);
 		
+		//TODO: Check if index is too big/small if array
 		if(type->info != erw_TYPEINFO_ARRAY && type->info != erw_TYPEINFO_SLICE)
 		{
 			struct Str str = erw_type_tostring(type);
@@ -535,27 +536,55 @@ static struct erw_Type* erw_getexprtype(
 	else if(exprnode->type == erw_ASTNODETYPE_FUNCCALL)
 	{
 		erw_checkfunccall(scope, exprnode, lines);
-		struct erw_FuncDeclr* func = erw_scope_getfunc(
-			scope, 
-			exprnode->funccall.name,
-			lines
-		);
+		struct erw_Type* type;
+		if(exprnode->funccall.callee->type == erw_ASTNODETYPE_LITERAL)
+		{
+			struct erw_FuncDeclr* func = erw_scope_getfunc(
+				scope, 
+				exprnode->funccall.callee->token,
+				lines
+			);
 
-		if(func->type)
+			type = func->type;
+		}
+		else
+		{
+			struct erw_Type* newtype = erw_getaccesstype(
+				scope, 
+				exprnode->funccall.callee, 
+				lines
+			);
+
+			//Assume newtype is erw_TYPEINFO_FUNC, already checked in
+			//checkfunccall
+
+			type = newtype->func.type;
+		}
+
+		if(type)
 		{ 
-			ret = func->type;
+			ret = type;
 		}
 		else
 		{ 
-			struct erw_Token* token = exprnode->funccall.name;
+			struct erw_ASTNode* firstnode = erw_getfirstnode(
+				exprnode->funccall.callee
+			);
+			struct erw_ASTNode* lastnode = erw_getlastnode(
+				exprnode->funccall.callee
+			);
+
 			struct Str msg;
 			str_ctor(&msg, "Void function used in expression");
 			erw_error(
 				msg.data, 
-				lines[token->linenum - 1].data,
-				token->linenum, 
-				token->column,
-				token->column + vec_getsize(token->text) - 2 //?
+				lines[firstnode->token->linenum - 1].data,
+				firstnode->token->linenum, 
+				firstnode->token->column,
+				(lastnode->token->linenum == firstnode->token->linenum) 
+					? (size_t)(lastnode->token->column + vec_getsize(
+							lastnode->token->text)) - 2
+					: lines[firstnode->token->linenum - 1].len
 			);
 			str_dtor(&msg);
 		}
@@ -722,59 +751,105 @@ static void erw_checkfunccall(
 		callnode->type->name
 	);
 	log_assert(lines, "is NULL");
+	
+	struct erw_ASTNode* firstnode = erw_getfirstnode(callnode->funccall.callee);
+	struct erw_ASTNode* lastnode = erw_getlastnode(callnode->funccall.callee);
 
-	struct erw_FuncDeclr* func = erw_scope_getfunc(
-		scope, 
-		callnode->funccall.name, 
-		lines
-	);
+	struct erw_FuncDeclr* func = NULL;
+	struct erw_Type* type = NULL;
+	size_t numparams = 0;
+	if(callnode->funccall.callee->type == erw_ASTNODETYPE_LITERAL)
+	{
+		func = erw_scope_getfunc(
+			scope, 
+			callnode->funccall.callee->token, 
+			lines
+		);
 
-	if(vec_getsize(func->node->funcdef.params) != 
-		vec_getsize(callnode->funccall.args))
+		numparams = vec_getsize(func->node->funcdef.params);
+		if(strcmp(scope->funcname, callnode->funccall.callee->token->text)) 
+			//Don't flag as used if no extern function calls it
+		{
+			func->used = 1;
+		}
+	}
+	else
+	{
+		type = erw_getaccesstype(scope, callnode->funccall.callee, lines);
+		if(type->info != erw_TYPEINFO_FUNC)
+		{
+			struct Str str = erw_type_tostring(type);
+			struct Str msg;
+			str_ctorfmt(
+				&msg, 
+				"Attempt to call non-function type ('%s')",
+				str.data
+			);
+			erw_error(
+				msg.data, 
+				lines[firstnode->token->linenum - 1].data,
+				firstnode->token->linenum, 
+				firstnode->token->column,
+				(lastnode->token->linenum == firstnode->token->linenum) 
+					? (size_t)(lastnode->token->column + vec_getsize(
+							lastnode->token->text)) - 2
+					: lines[firstnode->token->linenum - 1].len
+			);
+			str_dtor(&msg);
+			str_dtor(&str);
+		}
+
+		numparams = vec_getsize(type->func.params);
+	}
+
+	if(numparams != vec_getsize(callnode->funccall.args))
 	{ 
 		struct Str msg;
 		str_ctorfmt(
 			&msg,
-			"Incorrect number of arguments in function call ('%s')."
-				" Expected %zu, got %zu", 
-			callnode->funccall.name->text,
-			vec_getsize(func->node->funcdef.params),
+			"Incorrect number of arguments in function call. Expected %zu, got"
+				" %zu", 
+			numparams,
 			vec_getsize(callnode->funccall.args)
 		);
 
 		erw_error(
 			msg.data, 
-			lines[callnode->funccall.name->linenum - 1].data, 
-			callnode->funccall.name->linenum, 
-			callnode->funccall.name->column,
-			callnode->funccall.name->column + 
-				vec_getsize(callnode->funccall.name->text) - 2
+			lines[firstnode->token->linenum - 1].data,
+			firstnode->token->linenum, 
+			firstnode->token->column,
+			(lastnode->token->linenum == firstnode->token->linenum) 
+				? (size_t)(lastnode->token->column + vec_getsize(
+						lastnode->token->text)) - 2
+				: lines[firstnode->token->linenum - 1].len
 		);
 		str_dtor(&msg);
 	}
 
-	for(size_t i = 0; i < vec_getsize(func->node->funcdef.params); i++)
+	for(size_t i = 0; i < numparams; i++)
 	{
-		struct erw_Type* type = erw_scope_createtype(
-			scope,
-			func->node->funcdef.params[i]->vardeclr.type,
-			lines
-		);
+		struct erw_Type* type2 = NULL;
+		if(callnode->funccall.callee->type == erw_ASTNODETYPE_LITERAL)
+		{
+			type2 = erw_scope_createtype(
+				scope,
+				func->node->funcdef.params[i]->vardeclr.type,
+				lines
+			);
+
+			//NOTE: Memory leak
+		}
+		else
+		{
+			type2 = type->func.params[i];
+		}
 
 		erw_checkexprtype(
 			scope, 
 			callnode->funccall.args[i], 
-			type,
+			type2,
 			lines
 		);
-
-		erw_type_dtor(type);
-	}
-
-	if(strcmp(scope->funcname, callnode->funccall.name->text)) 
-		//Don't flag as used if no extern function calls it
-	{
-		func->used = 1;
 	}
 }
 
@@ -1109,7 +1184,6 @@ static void erw_checkblock(
 				lines
 			);
 
-			erw_type_dtor(type);
 			if(blocknode->block.stmts[i]->token->type 
 				!= erw_TOKENTYPE_OPERATOR_ASSIGN) //Fix firstnode?
 			{ 
@@ -1169,6 +1243,20 @@ static void erw_checkblock(
 				str_dtor(&msg);
 			}
 			*/
+		}
+		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_LITERAL)
+		{
+			struct Str msg;
+			str_ctor(&msg, "Unexpected literal");
+			erw_error(
+				msg.data, 
+				lines[blocknode->block.stmts[i]->token->linenum - 1].data,
+				blocknode->block.stmts[i]->token->linenum, 
+				blocknode->block.stmts[i]->token->column,
+				blocknode->block.stmts[i]->token->column +
+					vec_getsize(blocknode->block.stmts[i]->token->text) - 2
+			);
+			str_dtor(&msg);
 		}
 		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_FUNCCALL)
 		{

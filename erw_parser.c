@@ -112,18 +112,10 @@ static struct erw_ASTNode* erw_parse_factor(struct erw_Parser* parser)
 	}
 	else if(erw_parser_check(parser, erw_TOKENTYPE_IDENT))
 	{ 
-		if(parser->tokens[parser->current + 1].type 
-			== erw_TOKENTYPE_LPAREN)
-		{ 
-			node = erw_parse_funccall(parser);
-		}
-		else
-		{ 
-			node = erw_ast_new(
-				erw_ASTNODETYPE_LITERAL, //Is this really correct?
-				erw_parser_expect(parser, erw_TOKENTYPE_IDENT)
-			);
-		}
+		node = erw_ast_new(
+			erw_ASTNODETYPE_LITERAL, //Is this really correct?
+			erw_parser_expect(parser, erw_TOKENTYPE_IDENT)
+		);
 	}
 	else if(erw_parser_check(parser, erw_TOKENTYPE_LPAREN))
 	{ 
@@ -175,20 +167,13 @@ static struct erw_ASTNode* erw_parse_factor(struct erw_Parser* parser)
 			);
 
 			newnode->binexpr.expr1 = node;
-			if(parser->tokens[parser->current + 1].type == erw_TOKENTYPE_LPAREN)
-			{
-				newnode->binexpr.expr2 = erw_parse_funccall(parser);
-			}
-			else
-			{
-				newnode->binexpr.expr2 = erw_ast_new(
-					erw_ASTNODETYPE_LITERAL,
-					erw_parser_expect(
-						parser,
-						erw_TOKENTYPE_IDENT
-					)
-				);
-			}
+			newnode->binexpr.expr2 = erw_ast_new(
+				erw_ASTNODETYPE_LITERAL,
+				erw_parser_expect(
+					parser,
+					erw_TOKENTYPE_IDENT
+				)
+			);
 
 			node = newnode;
 		}
@@ -214,6 +199,37 @@ static struct erw_ASTNode* erw_parse_factor(struct erw_Parser* parser)
 			newnode->access.expr = node;
 			newnode->access.index = erw_parse_expr(parser);
 			erw_parser_expect(parser, erw_TOKENTYPE_RBRACKET);
+			node = newnode;
+		}
+		else if(erw_parser_check(parser, erw_TOKENTYPE_LPAREN))
+		{
+			struct erw_ASTNode* newnode = erw_ast_new(
+				erw_ASTNODETYPE_FUNCCALL, 
+				NULL
+			);
+
+			erw_parser_expect(parser, erw_TOKENTYPE_LPAREN);
+			int first = 1;
+			while(!erw_parser_check(parser, erw_TOKENTYPE_RPAREN))
+			{
+				if(first)
+				{
+					first = 0;
+				}
+				else
+				{
+					erw_parser_expect(parser, erw_TOKENTYPE_COMMA);
+				}
+
+				vec_pushback(newnode->funccall.args, erw_parse_expr(parser));
+				if(!erw_parser_check(parser, erw_TOKENTYPE_COMMA))
+				{
+					break;
+				}
+			}
+
+			erw_parser_expect(parser, erw_TOKENTYPE_RPAREN);
+			newnode->funccall.callee = node;
 			node = newnode;
 		}
 		else
@@ -398,36 +414,6 @@ static struct erw_ASTNode* erw_parse_andor(struct erw_Parser* parser)
 static struct erw_ASTNode* erw_parse_expr(struct erw_Parser* parser)
 {
 	return erw_parse_andor(parser);
-}
-
-static struct erw_ASTNode* erw_parse_funccall(struct erw_Parser* parser)
-{
-	struct erw_ASTNode* node = erw_ast_new(erw_ASTNODETYPE_FUNCCALL, NULL);
-	node->funccall.name = erw_parser_expect(parser, erw_TOKENTYPE_IDENT);
-	node->token = node->funccall.name;
-	
-	erw_parser_expect(parser, erw_TOKENTYPE_LPAREN);
-	int first = 1;
-	while(!erw_parser_check(parser, erw_TOKENTYPE_RPAREN))
-	{
-		if(first)
-		{
-			first = 0;
-		}
-		else
-		{
-			erw_parser_expect(parser, erw_TOKENTYPE_COMMA);
-		}
-
-		vec_pushback(node->funccall.args, erw_parse_expr(parser));
-		if(!erw_parser_check(parser, erw_TOKENTYPE_COMMA))
-		{
-			break;
-		}
-	}
-
-	erw_parser_expect(parser, erw_TOKENTYPE_RPAREN);
-	return node;
 }
 
 static struct erw_ASTNode* erw_parse_type(struct erw_Parser* parser)
@@ -809,50 +795,42 @@ static struct erw_ASTNode* erw_parse_block(struct erw_Parser* parser)
 		}
 		else if(erw_parser_check(parser, erw_TOKENTYPE_IDENT))
 		{ 
-			if(parser->tokens[parser->current + 1].type 
-				== erw_TOKENTYPE_LPAREN)
-			{ 
-				vec_pushback(node->block.stmts, erw_parse_funccall(parser));
+			struct erw_ASTNode* ident = erw_parse_expr(parser);
+			if(parser->tokens[parser->current].type 
+				== erw_TOKENTYPE_OPERATOR_BITAND
+			|| parser->tokens[parser->current].type 
+				== erw_TOKENTYPE_OPERATOR_ACCESS
+			|| parser->tokens[parser->current].type 
+				==  erw_TOKENTYPE_OPERATOR_ASSIGN 
+			|| parser->tokens[parser->current].type 
+				== erw_TOKENTYPE_OPERATOR_ADDASSIGN 
+			|| parser->tokens[parser->current].type 
+				== erw_TOKENTYPE_OPERATOR_SUBASSIGN 
+			|| parser->tokens[parser->current].type 
+				== erw_TOKENTYPE_OPERATOR_MULASSIGN 
+			|| parser->tokens[parser->current].type 
+				== erw_TOKENTYPE_OPERATOR_DIVASSIGN 
+			|| parser->tokens[parser->current].type 
+				== erw_TOKENTYPE_OPERATOR_POWASSIGN 
+			|| parser->tokens[parser->current].type 
+				== erw_TOKENTYPE_OPERATOR_MODASSIGN)
+			{
+				struct erw_ASTNode* assignnode = erw_ast_new(
+					erw_ASTNODETYPE_ASSIGNMENT,
+					&parser->tokens[parser->current]
+				);
+
+				parser->current++;
+				struct erw_ASTNode* expr = erw_parse_expr(parser);
+				assignnode->assignment.assignee = ident;
+				assignnode->assignment.expr = expr;
+				vec_pushback(node->block.stmts, assignnode);
 			}
 			else
 			{
-				struct erw_ASTNode* assignee = erw_parse_expr(parser);
-				if(parser->tokens[parser->current].type 
-					== erw_TOKENTYPE_OPERATOR_BITAND
-				|| parser->tokens[parser->current].type 
-					== erw_TOKENTYPE_OPERATOR_ACCESS
-				|| parser->tokens[parser->current].type 
-					==  erw_TOKENTYPE_OPERATOR_ASSIGN 
-				|| parser->tokens[parser->current].type 
-					== erw_TOKENTYPE_OPERATOR_ADDASSIGN 
-				|| parser->tokens[parser->current].type 
-					== erw_TOKENTYPE_OPERATOR_SUBASSIGN 
-				|| parser->tokens[parser->current].type 
-					== erw_TOKENTYPE_OPERATOR_MULASSIGN 
-				|| parser->tokens[parser->current].type 
-					== erw_TOKENTYPE_OPERATOR_DIVASSIGN 
-				|| parser->tokens[parser->current].type 
-					== erw_TOKENTYPE_OPERATOR_POWASSIGN 
-				|| parser->tokens[parser->current].type 
-					== erw_TOKENTYPE_OPERATOR_MODASSIGN)
-				{
-					struct erw_ASTNode* assignnode = erw_ast_new(
-						erw_ASTNODETYPE_ASSIGNMENT,
-						&parser->tokens[parser->current]
-					);
-
-					parser->current++;
-					struct erw_ASTNode* expr = erw_parse_expr(parser);
-					assignnode->assignment.assignee = assignee;
-					assignnode->assignment.expr = expr;
-					vec_pushback(node->block.stmts, assignnode);
-				}
-				else
-				{
-					log_assert(0, "this shouldn't happen");
-					//vec_pushback(node->block.stmts, assignee);
-				}
-			}		
+				//Assume struct access/function call
+				vec_pushback(node->block.stmts, ident); 
+			}
 		}
 		else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_IF))
 		{ 

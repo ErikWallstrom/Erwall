@@ -297,7 +297,11 @@ struct erw_Type* erw_scope_createtype(
 			{
 				vec_pushback(
 					tmptype->func.params, 
-					erw_scope_createtype(self, node->funcdef.params[i], lines);
+					erw_scope_createtype(
+						self, 
+						node->funcdef.params[i]->vardeclr.type, 
+						lines
+					)
 				);
 			}
 
