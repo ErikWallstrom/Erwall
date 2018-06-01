@@ -8,6 +8,7 @@ static struct erw_ASTNode* erw_getfirstnode(struct erw_ASTNode* expr)
 	while(firstnode->type == erw_ASTNODETYPE_UNEXPR 
 		|| firstnode->type == erw_ASTNODETYPE_BINEXPR
 		|| firstnode->type == erw_ASTNODETYPE_CAST
+		|| firstnode->type == erw_ASTNODETYPE_ACCESS
 		|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
 	{
 		if(firstnode->type == erw_ASTNODETYPE_UNEXPR)
@@ -25,10 +26,18 @@ static struct erw_ASTNode* erw_getfirstnode(struct erw_ASTNode* expr)
 		{
 			firstnode = firstnode->binexpr.expr1;
 		}
+		else if(firstnode->type == erw_ASTNODETYPE_ACCESS)
+		{
+			firstnode = firstnode->access.expr;
+		}
 		else if(firstnode->type == erw_ASTNODETYPE_CAST
 			|| firstnode->type == erw_ASTNODETYPE_FUNCCALL)
 		{
 			break;
+		}
+		else
+		{
+			log_assert(0, "this shouldn't happen");
 		}
 	}
 
@@ -39,6 +48,7 @@ static struct erw_ASTNode* erw_getlastnode(struct erw_ASTNode* expr)
 {
 	struct erw_ASTNode* lastnode = expr;
 	while(lastnode->type == erw_ASTNODETYPE_UNEXPR 
+		|| lastnode->type == erw_ASTNODETYPE_ACCESS
 		|| lastnode->type == erw_ASTNODETYPE_BINEXPR)
 	{
 		if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
@@ -56,6 +66,10 @@ static struct erw_ASTNode* erw_getlastnode(struct erw_ASTNode* expr)
 		{
 			lastnode = lastnode->binexpr.expr2;
 		}
+		else if(lastnode->type == erw_ASTNODETYPE_ACCESS)
+		{
+			lastnode = lastnode->access.expr;
+		}
 		else if(lastnode->type == erw_ASTNODETYPE_CAST)
 		{
 			lastnode = lastnode->cast.expr;
@@ -65,6 +79,10 @@ static struct erw_ASTNode* erw_getlastnode(struct erw_ASTNode* expr)
 			lastnode = lastnode->funccall.args[
 				vec_getsize(lastnode->funccall.args) - 1
 			];
+		}
+		else
+		{
+			log_assert(0, "this shouldn't happen");
 		}
 	}
 
@@ -202,6 +220,94 @@ static void erw_checkint(
 	}
 }
 */
+
+static struct erw_Type* erw_getexprtype(
+	struct erw_Scope* scope,
+	struct erw_ASTNode* exprnode,
+	struct Str* lines
+);
+
+static struct erw_Type* erw_getaccesstype(
+	struct erw_Scope* scope, 
+	struct erw_ASTNode* accessnode, 
+	struct Str* lines)
+{
+	log_assert(scope, "is NULL");
+	log_assert(accessnode, "is NULL");
+	log_assert(lines, "is NULL");
+
+	struct erw_Type* type = erw_getexprtype(
+		scope, 
+		accessnode->binexpr.expr1,
+		lines
+	);
+
+	struct erw_TypeStructMember* ret = NULL;
+	struct erw_Type* base = type;
+	while(base->info == erw_TYPEINFO_NAMED)
+	{
+		base = base->named.type;
+	}
+
+	struct erw_ASTNode* firstnode = erw_getlastnode(accessnode->binexpr.expr1);
+	if(base->info != erw_TYPEINFO_STRUCT)
+	{
+		struct Str typename = erw_type_tostring(type);
+		struct Str msg;
+		str_ctorfmt(
+			&msg, 
+			"Attempt to access member of non-struct type ('%s')", 
+			typename.data
+		);
+
+		erw_error(
+			msg.data, 
+			lines[firstnode->token->linenum - 1].data,
+			firstnode->token->linenum, 
+			firstnode->token->column,
+			firstnode->token->column + vec_getsize(firstnode->token->text) - 2
+		);
+		str_dtor(&msg);
+	}
+
+	struct erw_ASTNode* node = erw_getfirstnode(accessnode->binexpr.expr2);
+	struct erw_TypeStructMember* member = NULL;
+	for(size_t i = 0; i < vec_getsize(base->struct_.members); i++)
+	{
+		if(!strcmp(base->struct_.members[i].name, node->token->text))
+		{
+			member = &base->struct_.members[i];
+			ret = member;
+		}
+	}
+
+	if(!member)
+	{
+		struct Str typename = erw_type_tostring(type);
+		struct Str msg;
+		str_ctorfmt(
+			&msg, 
+			"Struct '%s' ('%s') has no member named '%s'", 
+			typename.data,
+			firstnode->token->text,
+			node->token->text
+		);
+
+		erw_error(
+			msg.data, 
+			lines[node->token->linenum - 1].data,
+			node->token->linenum, 
+			node->token->column,
+			node->token->column + vec_getsize(node->token->text) - 2
+		);
+		str_dtor(&msg);
+		str_dtor(&typename);
+	}
+
+	log_assert(ret, "is NULL");
+	return ret->type;
+}
+
 static void erw_checkfunccall(
 	struct erw_Scope* scope,
 	struct erw_ASTNode* callnode,
@@ -227,82 +333,90 @@ static struct erw_Type* erw_getexprtype(
 	}
 	else if(exprnode->type == erw_ASTNODETYPE_BINEXPR)
 	{
-		struct erw_Type* typesym1 = erw_getexprtype(
-			scope, 
-			exprnode->binexpr.expr1, 
-			lines
-		);
-
-		struct erw_Type* typesym2 = erw_getexprtype(
-			scope, 
-			exprnode->binexpr.expr2, 
-			lines
-		);
-
-		struct erw_ASTNode* firstnode = erw_getfirstnode(
-			exprnode->binexpr.expr1
-		);
-
-		struct erw_ASTNode* lastnode = erw_getlastnode(
-			exprnode->binexpr.expr2
-		);
-
-		if(!erw_type_compare(typesym1, typesym1))
+		if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_ACCESS)
 		{
-			struct Str typename1 = erw_type_tostring(typesym1);
-			struct Str typename2 = erw_type_tostring(typesym2);
-			struct Str msg;
-			str_ctorfmt(
-				&msg,
-				"%s expected type '%s', got type '%s'",
-				exprnode->token->type->name,
-				typename1.data,
-				typename2.data
-			);
-			erw_error(
-				msg.data, 
-				lines[firstnode->token->linenum - 1].data,
-				firstnode->token->linenum, 
-				lastnode->token->column,
-				(lastnode->token->linenum == firstnode->token->linenum) 
-					? (size_t)(lastnode->token->column + vec_getsize(
-							lastnode->token->text)) - 2
-					: lines[firstnode->token->linenum - 1].len
-			);
-			str_dtor(&msg);
-			str_dtor(&typename2);
-			str_dtor(&typename1);
-		}
-
-		if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_LESS 
-			|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_LESSOREQUAL 
-			|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_GREATER 
-			|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_GREATEROREQUAL)
-		{
-			ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
-			erw_checknumerical(typesym1, firstnode, lastnode, lines);
-			erw_type_dtor(typesym1);
-		}
-		else if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_EQUAL 
-			|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_NOTEQUAL)
-		{
-			ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
-			erw_type_dtor(typesym1);
-		}
-		else if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_OR 
-			|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_AND)
-		{
-			ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
-			erw_checkboolean(typesym1, firstnode, lastnode, lines);
-			erw_type_dtor(typesym1);
+			ret = erw_getaccesstype(scope, exprnode, lines);
 		}
 		else
 		{
-			ret = typesym1;
-			erw_checknumerical(ret, firstnode, lastnode, lines);
-		}
+			struct erw_Type* typesym1 = erw_getexprtype(
+				scope, 
+				exprnode->binexpr.expr1, 
+				lines
+			);
 
-		erw_type_dtor(typesym2);
+			struct erw_Type* typesym2 = erw_getexprtype(
+				scope, 
+				exprnode->binexpr.expr2, 
+				lines
+			);
+
+			struct erw_ASTNode* firstnode = erw_getfirstnode(
+				exprnode->binexpr.expr1
+			);
+
+			struct erw_ASTNode* lastnode = erw_getlastnode(
+				exprnode->binexpr.expr2
+			);
+
+			if(!erw_type_compare(typesym1, typesym1))
+			{
+				struct Str typename1 = erw_type_tostring(typesym1);
+				struct Str typename2 = erw_type_tostring(typesym2);
+				struct Str msg;
+				str_ctorfmt(
+					&msg,
+					"%s expected type '%s', got type '%s'",
+					exprnode->token->type->name,
+					typename1.data,
+					typename2.data
+				);
+				erw_error(
+					msg.data, 
+					lines[firstnode->token->linenum - 1].data,
+					firstnode->token->linenum, 
+					lastnode->token->column,
+					(lastnode->token->linenum == firstnode->token->linenum) 
+						? (size_t)(lastnode->token->column + vec_getsize(
+								lastnode->token->text)) - 2
+						: lines[firstnode->token->linenum - 1].len
+				);
+				str_dtor(&msg);
+				str_dtor(&typename2);
+				str_dtor(&typename1);
+			}
+
+			if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_LESS 
+				|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_LESSOREQUAL 
+				|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_GREATER 
+				|| exprnode->token->type 
+					== erw_TOKENTYPE_OPERATOR_GREATEROREQUAL)
+			{
+				ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
+				erw_checknumerical(typesym1, firstnode, lastnode, lines);
+				erw_type_dtor(typesym1);
+			}
+			else if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_EQUAL 
+				|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_NOTEQUAL)
+			{
+				ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
+				erw_type_dtor(typesym1);
+			}
+			else if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_OR 
+				|| exprnode->token->type == erw_TOKENTYPE_OPERATOR_AND)
+			{
+				ret = erw_type_builtins[erw_TYPEBUILTIN_BOOL];
+				erw_checkboolean(typesym1, firstnode, lastnode, lines);
+				erw_type_dtor(typesym1);
+			}
+			else
+			{
+				ret = typesym1;
+				erw_checknumerical(ret, firstnode, lastnode, lines);
+			}
+
+			erw_type_dtor(typesym2);
+		}
 	}
 	else if(exprnode->type == erw_ASTNODETYPE_UNEXPR)
 	{
@@ -382,6 +496,41 @@ static struct erw_Type* erw_getexprtype(
 				);
 			}
 		}
+	}
+	else if(exprnode->type == erw_ASTNODETYPE_ACCESS)
+	{
+		struct erw_ASTNode* firstnode = erw_getfirstnode(exprnode->access.expr);
+		struct erw_ASTNode* lastnode = erw_getlastnode(exprnode->access.expr);
+		struct erw_Type* type = erw_getexprtype(
+			scope,
+			exprnode->access.expr,
+			lines
+		);
+		
+		if(type->info != erw_TYPEINFO_ARRAY && type->info != erw_TYPEINFO_SLICE)
+		{
+			struct Str str = erw_type_tostring(type);
+			struct Str msg;
+			str_ctorfmt(
+				&msg, 
+				"Trying to access a non-array/slice type (%s)",
+				str.data
+			);
+			erw_error(
+				msg.data, 
+				lines[firstnode->token->linenum - 1].data,
+				firstnode->token->linenum, 
+				firstnode->token->column,
+				(lastnode->token->linenum == firstnode->token->linenum) 
+					? (size_t)(lastnode->token->column + vec_getsize(
+							lastnode->token->text)) - 2
+					: lines[firstnode->token->linenum - 1].len
+			);
+			str_dtor(&msg);
+			str_dtor(&str);
+		}
+
+		ret = type->array.type;
 	}
 	else if(exprnode->type == erw_ASTNODETYPE_FUNCCALL)
 	{
@@ -1306,6 +1455,7 @@ void erw_checkmain(struct erw_Scope* scope, struct Str* lines)
 	}
 
 	//TODO: Check for parameters
+	func->used = 1;
 }
 
 struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)

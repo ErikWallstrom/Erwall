@@ -106,7 +106,7 @@ const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_BITOR =
 	&(struct erw_TokenType){"Operator 'Bitwise Or'"};
 const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_BITAND =
 	&(struct erw_TokenType){"Operator 'Bitwise And'"};
-const struct erw_TokenType* const erw_TOKENTYPE_ACCESS =
+const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ACCESS =
 	&(struct erw_TokenType){"Operator 'Access'"};
 const struct erw_TokenType* const erw_TOKENTYPE_LITERAL_INT =
 	&(struct erw_TokenType){"Literal Int"};
@@ -123,7 +123,7 @@ const struct erw_TokenType* const erw_TOKENTYPE_IDENT =
 const struct erw_TokenType* const erw_TOKENTYPE_TYPE =
 	&(struct erw_TokenType){"Type"};
 const struct erw_TokenType* const erw_TOKENTYPE_END =
-	&(struct erw_TokenType){"End (';')"};
+	&(struct erw_TokenType){"End"};
 const struct erw_TokenType* const erw_TOKENTYPE_COMMA =
 	&(struct erw_TokenType){"Comma"};
 const struct erw_TokenType* const erw_TOKENTYPE_LPAREN =
@@ -425,7 +425,7 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				break;
 
 			case '.':
-				token.type = erw_TOKENTYPE_ACCESS;
+				token.type = erw_TOKENTYPE_OPERATOR_ACCESS;
 				break;
 
 			case '+':

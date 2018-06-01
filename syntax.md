@@ -107,3 +107,11 @@ name %= value;
 
 x = 12;
 ```
+
+# References
+
+```erw
+let x: Int32 = 12;
+let x_ref: &Int32 = &x;
+let y: Int32 = x_ref&;
+```

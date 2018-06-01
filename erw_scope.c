@@ -258,7 +258,7 @@ struct erw_Type* erw_scope_createtype(
 				lines
 			);
 			*tmptype = *foundtype;
-			tmptype->named.used = 0;
+			foundtype->named.used = 1;
 			done = 1; //Break loop
 		}
 		else if(node->type == erw_ASTNODETYPE_FUNCTYPE)

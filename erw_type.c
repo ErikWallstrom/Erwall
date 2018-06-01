@@ -279,6 +279,9 @@ struct Str erw_type_tostring(struct erw_Type* type)
 
 int erw_type_compare(struct erw_Type* type1, struct erw_Type* type2)
 {
+	log_assert(type1, "is NULL");
+	log_assert(type2, "is NULL");
+
 	if(type1->info != type2->info)
 	{
 		return 0;
@@ -354,6 +357,7 @@ int erw_type_compare(struct erw_Type* type1, struct erw_Type* type2)
 void erw_type_dtor(struct erw_Type* self)
 {
 	log_assert(self, "is NULL");
+
 	for(size_t i = 0; i < erw_TYPEBUILTIN_COUNT; i++)
 	{
 		if(self == erw_type_builtins[i])

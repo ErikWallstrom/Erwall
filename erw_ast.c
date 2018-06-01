@@ -58,6 +58,8 @@ const struct erw_ASTNodeType* const erw_ASTNODETYPE_TYPE =
 	&(struct erw_ASTNodeType){"Named Type"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNCTYPE =
 	&(struct erw_ASTNodeType){"Function Type"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_ACCESS = 
+	&(struct erw_ASTNodeType){"Array Access"};
 
 struct erw_ASTNode* erw_ast_new(
 	const struct erw_ASTNodeType* type, 
@@ -306,6 +308,11 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 		}
 		else if(ast->type == erw_ASTNODETYPE_TYPE) { }
 		else if(ast->type == erw_ASTNODETYPE_LITERAL) { }
+		else if(ast->type == erw_ASTNODETYPE_ACCESS) 
+		{ 
+			erw_ast_printinternal(ast->access.expr, level + 1);
+			erw_ast_printinternal(ast->access.index, level + 1);
+		}
 		else
 		{
 			log_assert(0, "This shouldn't happen (%s)'", ast->type->name);
@@ -495,6 +502,11 @@ void erw_ast_dtor(struct erw_ASTNode* ast)
 	}
 	else if(ast->type == erw_ASTNODETYPE_TYPE) { }
 	else if(ast->type == erw_ASTNODETYPE_LITERAL) { }
+	else if(ast->type == erw_ASTNODETYPE_ACCESS) 
+	{ 
+		erw_ast_dtor(ast->access.expr);
+		erw_ast_dtor(ast->access.index);
+	}
 	else
 	{
 		log_assert(0, "This shouldn't happen (%s)'", ast->type->name);

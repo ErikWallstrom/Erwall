@@ -3,18 +3,22 @@ type Player: struct(
 	mut y: Int32
 );
 
-func test: (let p_ref: &Player)
+type Players: struct(let players: []Player);
+
+func test: (let x: Int32) 
 {
-	p_ref&.x = 3;
-	p_ref&.y = 97;
+	
 }
 
 func main: () -> Int32
 {
+	let po: [3]Int32;
+	po[0] = 12;
 
-	let p: Player;
-	p.x = 12;
-	p.y = 44;
+	let p: Players;
+	let p_ref: &Players = &p;
 
-	test(&p);
+	test(p_ref&.players[2].y);
+	return 0;
 }
+
