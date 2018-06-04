@@ -367,7 +367,6 @@ int erw_type_compare(struct erw_Type* type1, struct erw_Type* type2)
 		log_assert(0, "this shouldn't happen (%i)'", type1->info);
 	}
 
-	log_info("Type: %s", erw_type_tostring(type1).data);
 	return erw_type_compare(type1->reference.type, type2->reference.type);
 }
 

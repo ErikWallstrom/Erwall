@@ -93,9 +93,9 @@ static struct erw_TypeDeclr* erw_scope_findtype(
 	{
 		for(size_t i = 0; i < vec_getsize(scope->types); i++)
 		{
-			if(!strcmp(scope->types[i].type->named.name, name))
+			if(!strcmp(scope->types[i]->type->named.name, name))
 			{
-				return &scope->types[i];
+				return scope->types[i];
 			}
 		}
 
@@ -119,7 +119,7 @@ struct erw_Scope* erw_scope_new(
 
 	self->functions = vec_ctor(struct erw_FuncDeclr, 0);
 	self->variables = vec_ctor(struct erw_VarDeclr, 0);
-	self->types = vec_ctor(struct erw_TypeDeclr, 0);
+	self->types = vec_ctor(struct erw_TypeDeclr*, 0);
 	self->children = vec_ctor(struct erw_Scope*, 0);
 	self->finalizers = vec_ctor(struct erw_Finalizer, 0);
 	self->index = index;
@@ -257,6 +257,8 @@ struct erw_Type* erw_scope_createtype(
 				node->token, 
 				lines
 			);
+
+			//log_assert(foundtype->size > 0, "invalid size");
 			*tmptype = *foundtype;
 			foundtype->named.used = 1;
 			done = 1; //Break loop
@@ -433,6 +435,16 @@ void erw_scope_addvardeclr(
 	symbol.type = erw_scope_createtype(self, node->vardeclr.type, lines);
 	symbol.node = node;
 	symbol.used = 0;
+
+	if(node->vardeclr.value)
+	{
+		symbol.hasvalue = 1;
+	}
+	else
+	{
+		symbol.hasvalue = 0;
+	}
+
 	vec_pushback(self->variables, symbol);
 }
 
@@ -557,16 +569,22 @@ void erw_scope_addtypedeclr(
 		str_dtor(&msg);
 	}
 
-	struct erw_TypeDeclr symbol;
-	symbol.node = node;
-	symbol.type = erw_type_new(erw_TYPEINFO_NAMED, NULL);
-	symbol.type->named.name = node->typedeclr.name->text;
-	symbol.type->named.used = 0;
+	struct erw_TypeDeclr* symbol = malloc(sizeof(struct erw_TypeDeclr));
+	if(!symbol)
+	{
+		log_error("malloc failed <%s>", __func__);
+	}
+
+	symbol->node = node;
+	symbol->type = erw_type_new(erw_TYPEINFO_NAMED, NULL);
+	symbol->type->named.name = node->typedeclr.name->text;
+	symbol->type->named.used = 0;
+	vec_pushback(self->types, symbol);
 
 	if(!node->typedeclr.type)
 	{
-		symbol.type->named.type = erw_type_new(erw_TYPEINFO_EMPTY, NULL);
-		symbol.type->named.size = 0; //Should this be 1?
+		symbol->type->named.type = erw_type_new(erw_TYPEINFO_EMPTY, NULL);
+		symbol->type->named.size = 0; //Should this be 1?
 	}
 	else if(node->typedeclr.type->type == erw_ASTNODETYPE_TYPE)
 	{
@@ -576,8 +594,8 @@ void erw_scope_addtypedeclr(
 			lines
 		);
 
-		symbol.type->named.type = newtype;
-		symbol.type->named.size = newtype->size;
+		symbol->type->named.type = newtype;
+		symbol->type->named.size = newtype->size;
 	}
 	else if(node->typedeclr.type->type == erw_ASTNODETYPE_STRUCT)
 	{
@@ -595,6 +613,47 @@ void erw_scope_addtypedeclr(
 				.name = node->typedeclr.type->struct_.members[i]->vardeclr.name
 					->text
 			};
+
+			struct erw_ASTNode* basenode = node->typedeclr.type->struct_
+				.members[i]->vardeclr.type;
+			struct erw_Type* basetype = member.type;
+			while(1)
+			{
+				if(basetype->info == erw_TYPEINFO_ARRAY)
+				{
+					basetype = basetype->array.type;
+					basenode = basenode->array.type;
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			if(basetype->info == erw_TYPEINFO_NAMED)
+			{
+				if(!strcmp(basetype->named.name, symbol->type->named.name))
+				{
+					struct Str msg;
+					str_ctorfmt(
+						&msg, 
+						"Recursive definition of type '%s' declared at line"
+							" %zu, column %zu",
+						symbol->type->named.name,
+						symbol->node->token->linenum,
+						symbol->node->token->column
+					);
+					erw_error(
+						msg.data, 
+						lines[basenode->token->linenum - 1].data, 
+						basenode->token->linenum, 
+						basenode->token->column,
+						basenode->token->column 
+							+ vec_getsize(basenode->token->text) - 2
+					);
+					str_dtor(&msg);
+				}
+			}
 
 			for(size_t j = 0; j < vec_getsize(newtype->struct_.members); j++)
 			{
@@ -634,8 +693,8 @@ void erw_scope_addtypedeclr(
 			vec_pushback(newtype->struct_.members, member);
 		}
 
-		symbol.type->named.type = newtype;
-		symbol.type->named.size = newtype->size;
+		symbol->type->named.type = newtype;
+		symbol->type->named.size = newtype->size;
 	}
 	else if(node->typedeclr.type->type == erw_ASTNODETYPE_UNION)
 	{
@@ -692,8 +751,8 @@ void erw_scope_addtypedeclr(
 		}
 
 		newtype->union_.size = largestsize;
-		symbol.type->named.type = newtype;
-		symbol.type->named.size = newtype->size;
+		symbol->type->named.type = newtype;
+		symbol->type->named.size = newtype->size;
 	}
 	else if(node->typedeclr.type->type == erw_ASTNODETYPE_ENUM)
 	{
@@ -828,15 +887,13 @@ void erw_scope_addtypedeclr(
 			vec_pushback(newtype->enum_.members, member);
 		}
 
-		symbol.type->named.type = newtype;
-		symbol.type->named.size = newtype->size;
+		symbol->type->named.type = newtype;
+		symbol->type->named.size = newtype->size;
 	}
 	else
 	{
 		log_assert(0, "this should not happen (%s)", node->type->name);
 	}
-
-	vec_pushback(self->types, symbol);
 }
 
 static void erw_scope_printinternal(
@@ -871,18 +928,18 @@ static void erw_scope_printinternal(
 			printf("│");
 		}
 
-		struct Str str = erw_type_tostring(self->types[i].type->named.type);
+		struct Str str = erw_type_tostring(self->types[i]->type->named.type);
 		printf(
 			"─ Type: %s (%s)\n", 
-			self->types[i].type->named.name, 
+			self->types[i]->type->named.name, 
 			str.data
 		);
 
-		if(self->types[i].type->named.type->info == erw_TYPEINFO_STRUCT)
+		if(self->types[i]->type->named.type->info == erw_TYPEINFO_STRUCT)
 		{
 			for(size_t j = 0; 
 				j < vec_getsize(
-					self->types[i].type->named.type->struct_.members
+					self->types[i]->type->named.type->struct_.members
 				);
 				j++)
 			{
@@ -893,21 +950,21 @@ static void erw_scope_printinternal(
 				}
 
 				struct Str str1 = erw_type_tostring(
-					self->types[i].type->named.type->struct_.members[j].type
+					self->types[i]->type->named.type->struct_.members[j].type
 				);
 				printf(
 					"─ Struct member: %s (%s)\n", 
-					self->types[i].type->named.type->struct_.members[j].name,
+					self->types[i]->type->named.type->struct_.members[j].name,
 					str1.data
 				);
 				str_dtor(&str1);
 			}
 		}
-		else if(self->types[i].type->named.type->info == erw_TYPEINFO_UNION)
+		else if(self->types[i]->type->named.type->info == erw_TYPEINFO_UNION)
 		{
 			for(size_t j = 0; 
 				j < vec_getsize(
-					self->types[i].type->named.type->union_.members
+					self->types[i]->type->named.type->union_.members
 				);
 				j++)
 			{
@@ -918,18 +975,18 @@ static void erw_scope_printinternal(
 				}
 
 				struct Str str1 = erw_type_tostring(
-					self->types[i].type->named.type->union_.members[j]
+					self->types[i]->type->named.type->union_.members[j]
 				);
 
 				printf("─ Union member: %s\n", str1.data);
 				str_dtor(&str1);
 			}
 		}
-		else if(self->types[i].type->named.type->info == erw_TYPEINFO_ENUM)
+		else if(self->types[i]->type->named.type->info == erw_TYPEINFO_ENUM)
 		{
 			for(size_t j = 0; 
 				j < vec_getsize(
-					self->types[i].type->named.type->enum_.members
+					self->types[i]->type->named.type->enum_.members
 				);
 				j++)
 			{
@@ -942,8 +999,8 @@ static void erw_scope_printinternal(
 				
 				printf(
 					"─ Enum member: %s (%zu)\n", 
-					self->types[i].type->named.type->enum_.members[j].name,
-					self->types[i].type->named.type->enum_.members[j].value
+					self->types[i]->type->named.type->enum_.members[j].name,
+					self->types[i]->type->named.type->enum_.members[j].value
 				);
 			}
 		}
@@ -1013,10 +1070,12 @@ void erw_scope_dtor(struct erw_Scope* self)
 	log_assert(self, "is NULL");
 	for(size_t i = 0; i < vec_getsize(self->types); i++)
 	{
-		if(self->types[i].node) //Check if type is builtin
+		if(self->types[i]->node) //Check if type is builtin
 		{
-			erw_type_dtor(self->types[i].type);
+			erw_type_dtor(self->types[i]->type);
 		}
+
+		free(self->types[i]);
 	}
 
 	vec_dtor(self->types);
@@ -1040,6 +1099,7 @@ void erw_scope_dtor(struct erw_Scope* self)
 		erw_scope_dtor(self->children[i]);
 	}
 
+	vec_dtor(self->finalizers);
 	vec_dtor(self->children);
 	free(self);
 }

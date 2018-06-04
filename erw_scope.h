@@ -36,6 +36,8 @@ struct erw_VarDeclr //Should this contain isconst
 	struct erw_ASTNode* node;
 	struct erw_Type* type;
 	int used;
+	int hasvalue;
+	//int isconst;
 };
 
 struct erw_TypeDeclr
@@ -54,7 +56,7 @@ struct erw_Scope
 {
 	Vec(struct erw_FuncDeclr) functions;
 	Vec(struct erw_VarDeclr) variables;
-	Vec(struct erw_TypeDeclr) types;
+	Vec(struct erw_TypeDeclr*) types;
 	Vec(struct erw_Scope*) children;
 	Vec(struct erw_Finalizer) finalizers;
 	struct erw_Scope* parent;

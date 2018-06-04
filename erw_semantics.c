@@ -1,6 +1,7 @@
 #include "erw_semantics.h"
 #include "erw_error.h"
 #include "log.h"
+#include <stdlib.h>
 
 static struct erw_ASTNode* erw_getfirstnode(struct erw_ASTNode* expr)
 {
@@ -656,7 +657,7 @@ static struct erw_Type* erw_getexprtype(
 				ret = erw_scope_createtype(scope, func->node, lines);
 			}
 
-			/* TODO: Implement this
+			/* TODO: Implement this*/
 			if(!var->hasvalue)
 			{
 				struct Str msg;
@@ -664,20 +665,19 @@ static struct erw_Type* erw_getexprtype(
 					&msg, 
 					"Uninitialized variable used in expression. Declared at"
 						" line %zu, column %zu",
-					var->node->branches[0]->token.linenum,
-					var->node->branches[0]->token.column
+					var->node->vardeclr.name->linenum,
+					var->node->vardeclr.name->column
 				);
 				erw_error(
 					msg.data, 
-					lines[exprnode->token.linenum - 1].data,
-					exprnode->token.linenum, 
-					exprnode->token.column,
-					exprnode->token.column +
-						vec_getsize(exprnode->token.text) - 2
+					lines[exprnode->token->linenum - 1].data,
+					exprnode->token->linenum, 
+					exprnode->token->column,
+					exprnode->token->column +
+						vec_getsize(exprnode->token->text) - 2
 				);
 				str_dtor(&msg);
 			}
-			*/
 		}
 		else
 		{
@@ -859,29 +859,6 @@ static void erw_checkfunc(
 	struct Str* lines
 );
 
-static void erw_checktypedeclr(
-	struct erw_Scope* scope,
-	struct erw_ASTNode* typenode,
-	struct Str* lines)
-{
-	log_assert(scope, "is NULL");
-	log_assert(typenode, "is NULL");
-	log_assert(lines, "is NULL");
-
-	erw_scope_addtypedeclr(scope, typenode, lines);
-	/*
-	if(typenode->typedeclr.type->type == erw_ASTNODETYPE_STRUCT)
-	{
-	}
-	else if(typenode->typedeclr.type->type == erw_ASTNODETYPE_UNION)
-	{
-	}
-	else if(typenode->typedeclr.type->type == erw_ASTNODETYPE_ENUM)
-	{
-	}
-	*/
-}
-
 static void erw_checkblock(
 	struct erw_Scope* scope,
 	struct erw_ASTNode* blocknode,
@@ -904,7 +881,7 @@ static void erw_checkblock(
 		}
 		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_TYPEDECLR)
 		{
-			erw_checktypedeclr(scope, blocknode->block.stmts[i], lines);
+			erw_scope_addtypedeclr(scope, blocknode->block.stmts[i], lines);
 		}
 		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_VARDECLR)
 		{
@@ -1184,65 +1161,105 @@ static void erw_checkblock(
 				lines
 			);
 
+			struct erw_ASTNode* firstnode = erw_getfirstnode(
+				blocknode->block.stmts[i]->assignment.assignee
+			);
+			struct erw_ASTNode* lastnode = erw_getlastnode(
+				blocknode->block.stmts[i]->assignment.assignee
+			);
+
 			if(blocknode->block.stmts[i]->token->type 
 				!= erw_TOKENTYPE_OPERATOR_ASSIGN) //Fix firstnode?
 			{ 
-				struct erw_ASTNode* firstnode = erw_getfirstnode(
+				if(!var->node->vardeclr.mutable)
+				{
+					struct Str msg;
+					str_ctorfmt(
+						&msg, 
+						"Operation '%s' is not allowed on an"
+							" immutable variable, declared at line %zu,"
+							" column %zu",
+						blocknode->block.stmts[i]->token->text,
+						var->node->vardeclr.name->linenum, 
+						var->node->vardeclr.name->column
+					);
+
+					erw_error(
+						msg.data, 
+						lines[firstnode->token->linenum - 1].data,
+						firstnode->token->linenum, 
+						firstnode->token->column,
+						(lastnode->token->linenum == firstnode->token->linenum) 
+							? (size_t)(lastnode->token->column + vec_getsize(
+									lastnode->token->text)) - 2
+							: lines[firstnode->token->linenum - 1].len
+					);
+					str_dtor(&msg);
+				}
+
+				if(!var->hasvalue)
+				{
+					struct Str msg;
+					str_ctorfmt(
+						&msg, 
+						"Operation '%s' is not allowed on an"
+							" uninitialized variable, declared at line %zu,"
+							" column %zu",
+						blocknode->block.stmts[i]->token->text,
+						var->node->vardeclr.name->linenum, 
+						var->node->vardeclr.name->column
+					);
+
+					erw_error(
+						msg.data, 
+						lines[firstnode->token->linenum - 1].data,
+						firstnode->token->linenum, 
+						firstnode->token->column,
+						(lastnode->token->linenum == firstnode->token->linenum) 
+							? (size_t)(lastnode->token->column + vec_getsize(
+									lastnode->token->text)) - 2
+							: lines[firstnode->token->linenum - 1].len
+					);
+					str_dtor(&msg);
+				}
+
+				firstnode = erw_getfirstnode(
 					blocknode->block.stmts[i]->assignment.expr
 				);
-				struct erw_ASTNode* lastnode = erw_getlastnode(
+				lastnode = erw_getlastnode(
 					blocknode->block.stmts[i]->assignment.expr
 				);
 				
 				erw_checknumerical(type, firstnode, lastnode, lines);
 			}
-
-			/* TODO: Implement this
-			if(var->node->vardeclr.mutable || !var->hasvalue)
-			{
-				if(blocknode->branches[i]->token.type != 
-					erw_TOKENTYPE_OPERATOR_ASSIGN)
-				{
-					if(!var->hasvalue)
-					{
-						struct Str msg;
-						str_ctorfmt(
-							&msg, 
-							"Operation '%s' is not allowed on an"
-								" uninitialized variable",
-							assignnode->token.text
-						);
-
-						erw_error(
-							msg.data, 
-							lines[identnode-> token.linenum - 1].data,
-							identnode->token.linenum, 
-							identnode->token.column,
-							identnode->token.column +
-								vec_getsize( identnode->token.text) - 2
-						);
-						str_dtor(&msg);
-					}
-				}
-				*/
-				//var->hasvalue = 1;
-			/*
-			}
 			else
 			{
-				struct Str msg;
-				str_ctor(&msg, "Reassignment of immutable variable");
-				erw_error(
-					msg.data, 
-					lines[identnode-> token.linenum - 1].data,
-					identnode->token.linenum, 
-					identnode->token.column,
-					identnode->token.column +
-						vec_getsize( identnode->token.text) - 2
-				);
-				str_dtor(&msg);
+				if(var->hasvalue && !var->node->vardeclr.mutable)
+				{
+					struct Str msg;
+					str_ctorfmt(
+						&msg, 
+						"Reassignment of immutable variable, declared at line"
+							"%zu, column %zu",
+						var->node->vardeclr.name->linenum, 
+						var->node->vardeclr.name->column
+					);
+
+					erw_error(
+						msg.data, 
+						lines[firstnode->token->linenum - 1].data,
+						firstnode->token->linenum, 
+						firstnode->token->column,
+						(lastnode->token->linenum == firstnode->token->linenum) 
+							? (size_t)(lastnode->token->column + vec_getsize(
+									lastnode->token->text)) - 2
+							: lines[firstnode->token->linenum - 1].len
+					);
+					str_dtor(&msg);
+				}
+				
+				var->hasvalue = 1;
 			}
-			*/
 		}
 		else if(blocknode->block.stmts[i]->type == erw_ASTNODETYPE_LITERAL)
 		{
@@ -1297,6 +1314,14 @@ static void erw_checkfunc(
 	for(size_t j = 0; j < vec_getsize(funcnode->funcdef.params); j++)
 	{ 
 		erw_scope_addvardeclr(newscope, funcnode->funcdef.params[j], lines);
+
+		//Ugly
+		struct erw_VarDeclr* var = erw_scope_getvar(
+			newscope, 
+			funcnode->funcdef.params[j]->vardeclr.name,
+			lines
+		);
+		var->hasvalue = 1;
 	}
 
 	erw_checkblock(newscope, funcnode->funcdef.block, lines);
@@ -1493,7 +1518,7 @@ static void erw_checkunused(struct erw_Scope* scope, struct Str* lines)
 
 	for(size_t i = 0; i < vec_getsize(scope->types); i++)
 	{
-		struct erw_TypeDeclr* type = &scope->types[i];
+		struct erw_TypeDeclr* type = scope->types[i];
 		if(!type->type->named.used)
 		{
 			struct Str msg;
@@ -1564,13 +1589,18 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 	for(size_t i = 0; i < erw_TYPEBUILTIN_COUNT; i++)
 	{  
 		//Should this use erw_scope_addtypedeclr?
-		vec_pushback(
-			globalscope->types, 
-			(struct erw_TypeDeclr){
-				.type = erw_type_builtins[i],
-				.node = NULL
-			}
-		);
+		struct erw_TypeDeclr* type = malloc(sizeof(struct erw_TypeDeclr));
+		if(!type)
+		{
+			log_error("malloc failed <%s>", __func__);
+		}
+
+		*type = (struct erw_TypeDeclr){
+			.type = erw_type_builtins[i],
+			.node = NULL
+		};
+
+		vec_pushback(globalscope->types, type);
 	}
 
 	for(size_t i = 0; i < vec_getsize(ast->start.children); i++)
@@ -1581,7 +1611,7 @@ struct erw_Scope* erw_checksemantics(struct erw_ASTNode* ast, struct Str* lines)
 		}
 		else if(ast->start.children[i]->type == erw_ASTNODETYPE_TYPEDECLR)
 		{
-			erw_checktypedeclr(globalscope, ast->start.children[i], lines);
+			erw_scope_addtypedeclr(globalscope, ast->start.children[i], lines);
 		}
 	}
 

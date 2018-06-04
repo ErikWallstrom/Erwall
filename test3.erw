@@ -1,36 +1,34 @@
 type Player: struct(
 	mut x: Int32,
 	mut y: Int32,
-	let update: func(Int32)
+	let update: func(Player) -> Player
 );
 
-type Players: struct(let players: []Player);
-
-func test: (let x: Int32) 
+func player_update: (let self: Player) -> Player
 {
-	type Result: union(Int32, &Player);
-	let t: Result;
-	#[
-	test.Int32 = 33;
-	test.&Player = &p;
-	test.[3]Lol = 44;
-	#]
+	return self;
+}
+
+func test: (let x: Int32) -> Int32
+{
+	while(true)
+	{
+		return x;
+	}
 }
 
 func main: () -> Int32
 {
-	let po: [3]Int32;
-	po[0] = 12;
+#[
+	let x: [[]Char]Int32;
+	x["hello"] = 12;
 
-	let p: Players;
-	let p_ref: &Players = &p;
-	p_ref&.players[0].update = test;
-
-	test(p_ref&.players[2].y);
-	test(p_ref&.players[0].x);
-	p.players[0].x = 44;
-
-	p.players[0].update(44);
+	let num: Int64 = Int64(44);
+	let numbers: [5]Int64 = [5]Int64(33, 44, 55, 66, 77);
+	let player: Player = Player(x: 12, y: 44, update: test);
+	let day: Weekday = Weekday.monday;
+	let result: Result = Result.None();
+#]
 	return 0;
 }
 

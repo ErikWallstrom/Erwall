@@ -93,7 +93,6 @@ static struct erw_Token* erw_parser_expect(
 }
 
 static struct erw_ASTNode* erw_parse_expr(struct erw_Parser* parser);
-static struct erw_ASTNode* erw_parse_funccall(struct erw_Parser* parser);
 static struct erw_ASTNode* erw_parse_type(struct erw_Parser* parser);
 static struct erw_ASTNode* erw_parse_factor(struct erw_Parser* parser)
 { 
