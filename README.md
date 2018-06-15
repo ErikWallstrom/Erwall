@@ -1,5 +1,7 @@
 # Gymnasiearbete - Skapa ett programmeringsspråk: Erwall
 
+Migrated to GitLab ([https://gitlab.com/ErikWallstrom/Erwall](https://gitlab.com/ErikWallstrom/Erwall))
+
 ## Frågeställningar
 
 * Vilka delar är en kompiler uppbyggd av?
