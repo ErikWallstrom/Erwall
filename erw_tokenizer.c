@@ -52,6 +52,8 @@ const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_UNION =
 	&(struct erw_TokenType){"Keyword 'union'"};
 const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ENUM = 
 	&(struct erw_TokenType){"Keyword 'enum'"};
+const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ARRAY =
+	&(struct erw_TokenType){"Keyword 'array'"};
 const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_UNSAFE =
 	&(struct erw_TokenType){"Keyword 'unsafe'"};
 const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DECLR =
@@ -353,6 +355,11 @@ Vec(struct erw_Token) erw_tokenize(const char* source, Vec(struct Str) lines)
 				!memcmp("enum", token.text, sizeof("enum") - 1))
 			{
 				token.type = erw_TOKENTYPE_KEYWORD_ENUM;
+			}
+			else if(sizeof("array") - 1 == vec_getsize(token.text) &&
+				!memcmp("array", token.text, sizeof("array") - 1))
+			{
+				token.type = erw_TOKENTYPE_KEYWORD_ARRAY;
 			}
 			else if(sizeof("unsafe") - 1 == vec_getsize(token.text) &&
 				!memcmp("unsafe", token.text, sizeof("unsafe") - 1))

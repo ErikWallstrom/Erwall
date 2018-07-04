@@ -46,6 +46,7 @@ extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_CAST;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_DEFER;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_WHILE;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ENUM;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_STRUCTMEMBER;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ENUMMEMBER;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_STRUCT;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNION;
@@ -57,6 +58,9 @@ extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_LITERAL;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_TYPE;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNCTYPE;
 extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ACCESS;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_STRUCTLITERAL;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_ARRAYLITERAL;
+extern const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNIONLITERAL;
 
 struct erw_ASTNode
 {
@@ -99,6 +103,13 @@ struct erw_ASTNode
 
 		struct
 		{
+			struct erw_Token* name;
+			struct erw_ASTNode* type;
+			struct erw_ASTNode* value;
+		} structmember;
+
+		struct
+		{
 			Vec(struct erw_ASTNode*) stmts;
 		} block;
 
@@ -135,7 +146,8 @@ struct erw_ASTNode
 		struct
 		{
 			struct erw_ASTNode* expr;
-			int left; //Used to distinguish reference/dereference
+			int left; //Used to distinguish reference/dereference //XXX: Ugly
+			int mutable; //Used to distinguish mutable referencing
 		} unexpr;
 
 		struct
@@ -196,6 +208,7 @@ struct erw_ASTNode
 		struct
 		{
 			struct erw_ASTNode* type;
+			int mutable;
 		} reference;
 
 		struct
@@ -220,6 +233,23 @@ struct erw_ASTNode
 			struct erw_ASTNode* expr;
 			struct erw_ASTNode* index;
 		} access;
+
+		struct
+		{
+			Vec(struct erw_Token*) names;
+			Vec(struct erw_ASTNode*) values;
+		} structliteral;
+
+		struct
+		{
+			Vec(struct erw_ASTNode*) values;
+		} arrayliteral;
+
+		struct
+		{
+			struct erw_ASTNode* type;
+			struct erw_ASTNode* value;
+		} unionliteral;
 	};
 
 	const struct erw_ASTNodeType* type;

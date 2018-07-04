@@ -1,3 +1,22 @@
+/*
+	Copyright (C) 2017 Erik Wallström
+
+	This file is part of Erwall.
+
+	Erwall is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Erwall is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "erw_ast.h"
 #include "log.h"
 #include <stdlib.h>
@@ -40,6 +59,8 @@ const struct erw_ASTNodeType* const erw_ASTNODETYPE_ENUM =
 	&(struct erw_ASTNodeType){"Enum Type"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_ENUMMEMBER =
 	&(struct erw_ASTNodeType){"Enum Member"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_STRUCTMEMBER =
+	&(struct erw_ASTNodeType){"Struct Member"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_STRUCT =
 	&(struct erw_ASTNodeType){"Struct Type"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNION =
@@ -60,6 +81,12 @@ const struct erw_ASTNodeType* const erw_ASTNODETYPE_FUNCTYPE =
 	&(struct erw_ASTNodeType){"Function Type"};
 const struct erw_ASTNodeType* const erw_ASTNODETYPE_ACCESS = 
 	&(struct erw_ASTNodeType){"Array Access"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_STRUCTLITERAL = 
+	&(struct erw_ASTNodeType){"Struct Literal"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_ARRAYLITERAL =
+	&(struct erw_ASTNodeType){"Array Literal"};
+const struct erw_ASTNodeType* const erw_ASTNODETYPE_UNIONLITERAL = 
+	&(struct erw_ASTNodeType){"Union Literal"};
 
 struct erw_ASTNode* erw_ast_new(
 	const struct erw_ASTNodeType* type, 
@@ -113,6 +140,15 @@ struct erw_ASTNode* erw_ast_new(
 	else if(self->type == erw_ASTNODETYPE_FUNCTYPE)
 	{
 		self->functype.params = vec_ctor(struct erw_ASTNode*, 0);
+	}
+	else if(self->type == erw_ASTNODETYPE_STRUCTLITERAL)
+	{
+		self->structliteral.names = vec_ctor(struct erw_Token*, 0);
+		self->structliteral.values = vec_ctor(struct erw_ASTNode*, 0);
+	}
+	else if(self->type == erw_ASTNODETYPE_ARRAYLITERAL)
+	{
+		self->arrayliteral.values = vec_ctor(struct erw_ASTNode*, 0);
 	}
 
 	return self;
@@ -270,6 +306,12 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 			erw_ast_printinternaltoken(ast->enummember.name, level + 1);
 			erw_ast_printinternal(ast->enummember.value, level + 1);
 		}
+		else if(ast->type == erw_ASTNODETYPE_STRUCTMEMBER)
+		{
+			erw_ast_printinternaltoken(ast->structmember.name, level + 1);
+			erw_ast_printinternal(ast->structmember.type, level + 1);
+			erw_ast_printinternal(ast->structmember.value, level + 1);
+		}
 		else if(ast->type == erw_ASTNODETYPE_STRUCT)
 		{
 			for(size_t i = 0; i < vec_getsize(ast->struct_.members); i++)
@@ -312,6 +354,30 @@ static void erw_ast_printinternal(struct erw_ASTNode* ast, size_t level)
 		{ 
 			erw_ast_printinternal(ast->access.expr, level + 1);
 			erw_ast_printinternal(ast->access.index, level + 1);
+		}
+		else if(ast->type == erw_ASTNODETYPE_STRUCTLITERAL)
+		{
+			//Assume equal number of names and values
+			for(size_t i = 0; i < vec_getsize(ast->structliteral.names); i++)
+			{
+				erw_ast_printinternaltoken(
+					ast->structliteral.names[i], 
+					level + 1
+				);
+				erw_ast_printinternal(ast->structliteral.values[i], level + 1);
+			}
+		}
+		else if(ast->type == erw_ASTNODETYPE_ARRAYLITERAL)
+		{
+			for(size_t i = 0; i < vec_getsize(ast->arrayliteral.values); i++)
+			{
+				erw_ast_printinternal(ast->arrayliteral.values[i], level + 1);
+			}
+		}
+		else if(ast->type == erw_ASTNODETYPE_UNIONLITERAL)
+		{
+			erw_ast_printinternal(ast->unionliteral.type, level + 1);
+			erw_ast_printinternal(ast->unionliteral.value, level + 1);
 		}
 		else
 		{
@@ -460,6 +526,11 @@ void erw_ast_dtor(struct erw_ASTNode* ast)
 	{
 		erw_ast_dtor(ast->enummember.value);
 	}
+	else if(ast->type == erw_ASTNODETYPE_STRUCTMEMBER)
+	{
+		erw_ast_dtor(ast->structmember.type);
+		erw_ast_dtor(ast->structmember.value);
+	}
 	else if(ast->type == erw_ASTNODETYPE_STRUCT)
 	{
 		for(size_t i = 0; i < vec_getsize(ast->struct_.members); i++)
@@ -507,6 +578,30 @@ void erw_ast_dtor(struct erw_ASTNode* ast)
 	{ 
 		erw_ast_dtor(ast->access.expr);
 		erw_ast_dtor(ast->access.index);
+	}
+	else if(ast->type == erw_ASTNODETYPE_STRUCTLITERAL)
+	{
+		for(size_t i = 0; i < vec_getsize(ast->structliteral.names); i++)
+		{
+			erw_ast_dtor(ast->structliteral.values[i]);
+		}
+
+		vec_dtor(ast->structliteral.names);
+		vec_dtor(ast->structliteral.values);
+	}
+	else if(ast->type == erw_ASTNODETYPE_ARRAYLITERAL)
+	{
+		for(size_t i = 0; i < vec_getsize(ast->arrayliteral.values); i++)
+		{
+			erw_ast_dtor(ast->arrayliteral.values[i]);
+		}
+
+		vec_dtor(ast->arrayliteral.values);
+	}
+	else if(ast->type == erw_ASTNODETYPE_UNIONLITERAL)
+	{
+		erw_ast_dtor(ast->unionliteral.type);
+		erw_ast_dtor(ast->unionliteral.value);
 	}
 	else
 	{

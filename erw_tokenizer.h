@@ -42,6 +42,7 @@ extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_WHILE;
 extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_STRUCT;
 extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_UNION;
 extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ENUM;
+extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_ARRAY;
 extern const struct erw_TokenType* const erw_TOKENTYPE_KEYWORD_UNSAFE;
 extern const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_DECLR;
 extern const struct erw_TokenType* const erw_TOKENTYPE_OPERATOR_ADD;

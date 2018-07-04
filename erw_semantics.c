@@ -1,3 +1,22 @@
+/*
+	Copyright (C) 2017 Erik Wallström
+
+	This file is part of Erwall.
+
+	Erwall is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	Erwall is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with Erwall.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "erw_semantics.h"
 #include "erw_error.h"
 #include "log.h"
@@ -50,7 +69,10 @@ static struct erw_ASTNode* erw_getlastnode(struct erw_ASTNode* expr)
 	struct erw_ASTNode* lastnode = expr;
 	while(lastnode->type == erw_ASTNODETYPE_UNEXPR 
 		|| lastnode->type == erw_ASTNODETYPE_ACCESS
-		|| lastnode->type == erw_ASTNODETYPE_BINEXPR)
+		|| lastnode->type == erw_ASTNODETYPE_BINEXPR
+		|| lastnode->type == erw_ASTNODETYPE_STRUCTLITERAL
+		|| lastnode->type == erw_ASTNODETYPE_UNIONLITERAL
+		|| lastnode->type == erw_ASTNODETYPE_ARRAYLITERAL)
 	{
 		if(lastnode->type == erw_ASTNODETYPE_UNEXPR)
 		{
@@ -79,6 +101,22 @@ static struct erw_ASTNode* erw_getlastnode(struct erw_ASTNode* expr)
 		{
 			lastnode = lastnode->funccall.args[
 				vec_getsize(lastnode->funccall.args) - 1
+			];
+		}
+		else if(lastnode->type == erw_ASTNODETYPE_STRUCTLITERAL)
+		{
+			lastnode = lastnode->structliteral.values[
+				vec_getsize(lastnode->structliteral.values) - 1
+			];
+		}
+		else if(lastnode->type == erw_ASTNODETYPE_UNIONLITERAL)
+		{
+			lastnode = lastnode->unionliteral.value;
+		}
+		else if(lastnode->type == erw_ASTNODETYPE_ARRAYLITERAL)
+		{
+			lastnode = lastnode->arrayliteral.values[
+				vec_getsize(lastnode->arrayliteral.values) - 1
 			];
 		}
 		else
@@ -244,21 +282,14 @@ static struct erw_Type* erw_getaccesstype(
 	);
 
 	struct erw_TypeStructMember* ret = NULL;
-	struct erw_Type* base = type;
-	while(base->info == erw_TYPEINFO_NAMED)
-	{
-		base = base->named.type;
-	}
-
 	struct erw_ASTNode* firstnode = erw_getlastnode(accessnode->binexpr.expr1);
-	if(base->info != erw_TYPEINFO_STRUCT)
+	if(!type)
 	{
-		struct Str typename = erw_type_tostring(type);
 		struct Str msg;
 		str_ctorfmt(
 			&msg, 
-			"Attempt to access member of non-struct type ('%s')", 
-			typename.data
+			"Attempt to access member of literal ('%s')", 
+			accessnode->binexpr.expr1->type->name
 		);
 
 		erw_error(
@@ -270,43 +301,359 @@ static struct erw_Type* erw_getaccesstype(
 		);
 		str_dtor(&msg);
 	}
-
-	struct erw_ASTNode* node = erw_getfirstnode(accessnode->binexpr.expr2);
-	struct erw_TypeStructMember* member = NULL;
-	for(size_t i = 0; i < vec_getsize(base->struct_.members); i++)
+	else
 	{
-		if(!strcmp(base->struct_.members[i].name, node->token->text))
+		struct erw_Type* base = type;
+		while(base->info == erw_TYPEINFO_NAMED)
 		{
-			member = &base->struct_.members[i];
-			ret = member;
+			base = base->named.type;
+		}
+
+		if(base->info != erw_TYPEINFO_STRUCT)
+		{
+			struct Str typename = erw_type_tostring(type);
+			struct Str msg;
+			str_ctorfmt(
+				&msg, 
+				"Attempt to access member of non-struct type ('%s')", 
+				typename.data
+			);
+
+			erw_error(
+				msg.data, 
+				lines[firstnode->token->linenum - 1].data,
+				firstnode->token->linenum, 
+				firstnode->token->column,
+				firstnode->token->column + vec_getsize(firstnode->token->text)
+					- 2
+			);
+			str_dtor(&msg);
+		}
+
+		struct erw_ASTNode* node = erw_getfirstnode(accessnode->binexpr.expr2);
+		struct erw_TypeStructMember* member = NULL;
+		for(size_t i = 0; i < vec_getsize(base->struct_.members); i++)
+		{
+			if(!strcmp(base->struct_.members[i].name, node->token->text))
+			{
+				member = &base->struct_.members[i];
+				ret = member;
+			}
+		}
+
+		if(!member)
+		{
+			struct Str typename = erw_type_tostring(type);
+			struct Str msg;
+			str_ctorfmt(
+				&msg, 
+				"Struct '%s' ('%s') has no member named '%s'", 
+				typename.data,
+				firstnode->token->text,
+				node->token->text
+			);
+
+			erw_error(
+				msg.data, 
+				lines[node->token->linenum - 1].data,
+				node->token->linenum, 
+				node->token->column,
+				node->token->column + vec_getsize(node->token->text) - 2
+			);
+			str_dtor(&msg);
+			str_dtor(&typename);
 		}
 	}
 
-	if(!member)
+	return ret->type;
+}
+
+static void erw_checkexprtype(
+	struct erw_Scope* scope,
+	struct erw_ASTNode* exprnode,
+	struct erw_Type* type,
+	struct Str* lines
+);
+
+static struct erw_Type* erw_deduceliteraltype(
+	struct erw_Scope* scope,
+	struct erw_Type* type,
+	struct erw_ASTNode* literal,
+	struct Str* lines)
+{
+	log_assert(scope, "is NULL");
+	log_assert(type, "is NULL");
+	log_assert(
+		literal->type == erw_ASTNODETYPE_STRUCTLITERAL
+			|| literal->type == erw_ASTNODETYPE_UNIONLITERAL
+			|| literal->type == erw_ASTNODETYPE_ARRAYLITERAL, 
+		"invalid literal (%s)",
+		literal->type->name
+	);
+	log_assert(literal, "is NULL");
+	log_assert(lines, "is NULL");
+
+	struct erw_Type* base = type;
+	while(base->info == erw_TYPEINFO_NAMED)
 	{
-		struct Str typename = erw_type_tostring(type);
-		struct Str msg;
-		str_ctorfmt(
-			&msg, 
-			"Struct '%s' ('%s') has no member named '%s'", 
-			typename.data,
-			firstnode->token->text,
-			node->token->text
+		base = base->named.type;
+	}
+
+	if(base->info == erw_TYPEINFO_STRUCT 
+		&& literal->type == erw_ASTNODETYPE_STRUCTLITERAL)
+	{
+		Vec(struct erw_Token*) members = vec_ctor(struct erw_Token*, 0);
+		for(size_t i = 0; i < vec_getsize(literal->structliteral.names); i++)
+		{
+			int found = 0;
+			for(size_t j = 0; j < vec_getsize(base->struct_.members); j++)
+			{
+				if(!strcmp(
+					literal->structliteral.names[i]->text, 
+					base->struct_.members[j].name))
+				{
+					for(size_t k = 0; k < vec_getsize(members); k++)
+					{
+						if(!strcmp(
+							members[k]->text, 
+							literal->structliteral.names[i]->text))
+						{
+							struct Str msg;
+							str_ctorfmt(
+								&msg, 
+								"Member '%s' has already been initialized at"
+									" line %zu, column %zu", 
+								members[k]->text,
+								members[k]->linenum,
+								members[k]->column
+							);
+
+							erw_error(
+								msg.data, 
+								lines[
+									literal->structliteral.names[i]->linenum - 1
+								].data,
+								literal->structliteral.names[i]->linenum, 
+								literal->structliteral.names[i]->column,
+								literal->structliteral.names[i]->column 
+									+ vec_getsize(
+										literal->structliteral.names[i]->text
+									) - 2
+							);
+
+							str_dtor(&msg);
+						}
+					}
+
+					//Check for errors
+					erw_checkexprtype(
+						scope, 
+						literal->structliteral.values[i], 
+						base->struct_.members[j].type,
+						lines
+					);
+
+					found = 1;
+					vec_pushback(members, literal->structliteral.names[i]);
+					break;
+				}
+			}
+			
+			if(!found)
+		 	{
+				struct Str typename = erw_type_tostring(type);
+				struct Str msg;
+				str_ctorfmt(
+					&msg, 
+					"Struct '%s' has no member named '%s'", 
+					typename.data,
+					literal->structliteral.names[i]->text
+				);
+
+				erw_error(
+					msg.data, 
+					lines[literal->structliteral.names[i]->linenum - 1].data,
+					literal->structliteral.names[i]->linenum, 
+					literal->structliteral.names[i]->column,
+					literal->structliteral.names[i]->column 
+						+ vec_getsize(literal->structliteral.names[i]->text) - 2
+				);
+
+				str_dtor(&msg);
+				str_dtor(&typename);
+		 	}
+		}
+
+		size_t nummembers = vec_getsize(members);
+		size_t numstructmembers = vec_getsize(base->struct_.members);
+		if(nummembers < numstructmembers)
+		{
+			struct Str typename = erw_type_tostring(type);
+			struct Str msg;
+			str_ctorfmt(
+				&msg, 
+				"Struct '%s' has %zu members. Literal only has %zu members.",
+				typename.data,
+				numstructmembers,
+				nummembers
+			);
+
+			for(size_t i = 0; i < numstructmembers; i++)
+			{
+				int found = 0;
+				for(size_t j = 0; j < nummembers; j++)
+				{
+					if(!strcmp(members[j]->text, base->struct_.members[i].name))
+					{
+						found = 1;
+						break;
+					}
+				}
+
+				if(!found)
+				{
+					str_appendfmt(
+						&msg, 
+						" Missing member '%s'.", 
+						base->struct_.members[i].name
+					);
+				}
+			}
+
+			erw_error(
+				msg.data, 
+				lines[literal->token->linenum - 1].data,
+				literal->token->linenum,
+				literal->token->column,
+				literal->token->column + vec_getsize(literal->token->text) - 2
+			);
+
+			str_dtor(&msg);
+			str_dtor(&typename);
+		}
+	}
+	else if(base->info == erw_TYPEINFO_UNION 
+		&& literal->type == erw_ASTNODETYPE_UNIONLITERAL)
+	{
+		struct erw_Type* literaltype = erw_scope_createtype(
+			scope, 
+			literal->unionliteral.type, 
+			lines
 		);
 
+		struct Str literalname = erw_type_tostring(literaltype);
+		int found = 0;
+		for(size_t i = 0; i < vec_getsize(base->union_.members); i++)
+		{
+			struct Str name = erw_type_tostring(base->union_.members[i]);
+			if(!strcmp(name.data, literalname.data))
+			{ 
+				//Check for errors
+				erw_checkexprtype(
+					scope, 
+					literal->unionliteral.value, 
+					literaltype,
+					lines
+				);
+
+				found = 1;
+				break;
+			}
+
+			str_dtor(&name);
+		}
+
+		if(!found)
+		{
+			struct Str typename = erw_type_tostring(type);
+			struct Str msg;
+			str_ctorfmt(
+				&msg, 
+				"Union '%s' has no '%s' type", 
+				typename.data,
+				literalname.data
+			);
+
+			erw_error(
+				msg.data, 
+				lines[literal->token->linenum - 1].data,
+				literal->token->linenum,
+				literal->token->column,
+				literal->token->column + vec_getsize(literal->token->text) - 2
+			);
+
+			str_dtor(&msg);
+			str_dtor(&typename);
+		}
+
+		str_dtor(&literalname);
+	}
+	else if(base->info == erw_TYPEINFO_ARRAY
+		&& literal->type == erw_ASTNODETYPE_ARRAYLITERAL)
+	{
+		size_t literalnum = vec_getsize(literal->arrayliteral.values);
+		for(size_t i = 0; i < literalnum; i++)
+		{
+			//Check for errors
+			erw_checkexprtype(
+				scope, 
+				literal->arrayliteral.values[i], 
+				base->array.type,
+				lines
+			);
+		}
+
+		if(literalnum != base->array.elements)
+		{
+			struct Str typename = erw_type_tostring(type);
+			struct Str msg;
+			str_ctorfmt(
+				&msg, 
+				"Array (type '%s') expects %zu elements, got %zu", 
+				typename.data,
+				base->array.elements,
+				literalnum
+			);
+
+			erw_error(
+				msg.data, 
+				lines[literal->token->linenum - 1].data,
+				literal->token->linenum,
+				literal->token->column,
+				literal->token->column + vec_getsize(literal->token->text) - 2
+			);
+
+			str_dtor(&msg);
+			str_dtor(&typename);
+		}
+	}
+	else
+	{
+		struct Str typename = erw_type_tostring(type);
+		struct Str basename = erw_type_tostring(base);
+		struct Str msg;
+		str_ctorfmt(
+			&msg,
+			"Unable to deduce type '%s' (%s) from '%s'",
+			typename.data,
+			basename.data,
+			literal->type->name
+		);
 		erw_error(
 			msg.data, 
-			lines[node->token->linenum - 1].data,
-			node->token->linenum, 
-			node->token->column,
-			node->token->column + vec_getsize(node->token->text) - 2
+			lines[literal->token->linenum - 1].data,
+			literal->token->linenum, 
+			literal->token->column,
+			literal->token->column 
+				+ vec_getsize(literal->token->text) - 2
 		);
+
 		str_dtor(&msg);
+		str_dtor(&basename);
 		str_dtor(&typename);
 	}
 
-	log_assert(ret, "is NULL");
-	return ret->type;
+	return type;
 }
 
 static void erw_checkfunccall(
@@ -329,8 +676,18 @@ static struct erw_Type* erw_getexprtype(
 	{
 		//TODO: Check if types are compatible
 		ret = erw_scope_createtype(scope, exprnode->cast.type, lines); 
+
 		//Check for errors
-		erw_type_dtor(erw_getexprtype(scope, exprnode->cast.expr, lines));
+		struct erw_Type* type = erw_getexprtype(
+			scope, 
+			exprnode->cast.expr, 
+			lines
+		);
+
+		if(type)
+		{
+			erw_type_dtor(type);
+		}
 	}
 	else if(exprnode->type == erw_ASTNODETYPE_BINEXPR)
 	{
@@ -360,18 +717,10 @@ static struct erw_Type* erw_getexprtype(
 				exprnode->binexpr.expr2
 			);
 
-			if(!erw_type_compare(typesym1, typesym1))
+			if(!typesym1 && !typesym2)
 			{
-				struct Str typename1 = erw_type_tostring(typesym1);
-				struct Str typename2 = erw_type_tostring(typesym2);
 				struct Str msg;
-				str_ctorfmt(
-					&msg,
-					"%s expected type '%s', got type '%s'",
-					exprnode->token->type->name,
-					typename1.data,
-					typename2.data
-				);
+				str_ctor(&msg, "Cannot deduce type (got two untyped literals)");
 				erw_error(
 					msg.data, 
 					lines[firstnode->token->linenum - 1].data,
@@ -383,8 +732,57 @@ static struct erw_Type* erw_getexprtype(
 						: lines[firstnode->token->linenum - 1].len
 				);
 				str_dtor(&msg);
-				str_dtor(&typename2);
-				str_dtor(&typename1);
+			}
+			else if(typesym1 && typesym2)
+			{
+				if(!erw_type_compare(typesym1, typesym1))
+				{
+					struct Str typename1 = erw_type_tostring(typesym1);
+					struct Str typename2 = erw_type_tostring(typesym2);
+					struct Str msg;
+					str_ctorfmt(
+						&msg,
+						"%s expected type '%s', got type '%s'",
+						exprnode->token->type->name,
+						typename1.data,
+						typename2.data
+					);
+					erw_error(
+						msg.data, 
+						lines[firstnode->token->linenum - 1].data,
+						firstnode->token->linenum, 
+						lastnode->token->column,
+						(lastnode->token->linenum == firstnode->token->linenum) 
+							? (size_t)(lastnode->token->column + vec_getsize(
+									lastnode->token->text)) - 2
+							: lines[firstnode->token->linenum - 1].len
+					);
+					str_dtor(&msg);
+					str_dtor(&typename2);
+					str_dtor(&typename1);
+				}
+			}
+			else
+			{
+				struct erw_Type* type;
+				struct erw_ASTNode* literal;
+				if(typesym1)
+				{
+					type = typesym1;
+					literal = exprnode->binexpr.expr2;
+				}
+				else
+				{
+					type = typesym2;
+					literal = exprnode->binexpr.expr1;
+				}
+
+				ret = erw_deduceliteraltype(
+					scope, 
+					type,
+					literal,
+					lines
+				);
 			}
 
 			if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_LESS 
@@ -441,6 +839,23 @@ static struct erw_Type* erw_getexprtype(
 					lines
 				);
 
+				if(!type->reference.type)
+				{
+					struct Str msg;
+					str_ctor(&msg, "Cannot deduce type (got untyped literal)");
+					erw_error(
+						msg.data, 
+						lines[firstnode->token->linenum - 1].data,
+						firstnode->token->linenum, 
+						firstnode->token->column,
+						(lastnode->token->linenum == firstnode->token->linenum) 
+							? (size_t)(lastnode->token->column + vec_getsize(
+									lastnode->token->text)) - 2
+							: lines[firstnode->token->linenum - 1].len
+					);
+					str_dtor(&msg);
+				}
+
 				ret = type;
 			}
 			else
@@ -450,6 +865,23 @@ static struct erw_Type* erw_getexprtype(
 					exprnode->unexpr.expr,
 					lines
 				);
+
+				if(!type)
+				{
+					struct Str msg;
+					str_ctor(&msg, "Cannot deduce type (got untyped literal)");
+					erw_error(
+						msg.data, 
+						lines[firstnode->token->linenum - 1].data,
+						firstnode->token->linenum, 
+						firstnode->token->column,
+						(lastnode->token->linenum == firstnode->token->linenum) 
+							? (size_t)(lastnode->token->column + vec_getsize(
+									lastnode->token->text)) - 2
+							: lines[firstnode->token->linenum - 1].len
+					);
+					str_dtor(&msg);
+				}
 				
 				if(type->info != erw_TYPEINFO_REFERENCE)
 				{
@@ -480,6 +912,23 @@ static struct erw_Type* erw_getexprtype(
 		else
 		{
 			ret = erw_getexprtype(scope, exprnode->unexpr.expr, lines);
+			if(!ret)
+			{
+				struct Str msg;
+				str_ctor(&msg, "Cannot deduce type (got untyped literal)");
+				erw_error(
+					msg.data, 
+					lines[firstnode->token->linenum - 1].data,
+					firstnode->token->linenum, 
+					firstnode->token->column,
+					(lastnode->token->linenum == firstnode->token->linenum) 
+						? (size_t)(lastnode->token->column + vec_getsize(
+								lastnode->token->text)) - 2
+						: lines[firstnode->token->linenum - 1].len
+				);
+				str_dtor(&msg);
+			}
+
 			if(exprnode->token->type == erw_TOKENTYPE_OPERATOR_NOT)
 			{
 				erw_checkboolean(ret, firstnode, lastnode, lines);
@@ -507,6 +956,23 @@ static struct erw_Type* erw_getexprtype(
 			exprnode->access.expr,
 			lines
 		);
+
+		if(!type)
+		{
+			struct Str msg;
+			str_ctor(&msg, "Cannot deduce type (got untyped literal)");
+			erw_error(
+				msg.data, 
+				lines[firstnode->token->linenum - 1].data,
+				firstnode->token->linenum, 
+				firstnode->token->column,
+				(lastnode->token->linenum == firstnode->token->linenum) 
+					? (size_t)(lastnode->token->column + vec_getsize(
+							lastnode->token->text)) - 2
+					: lines[firstnode->token->linenum - 1].len
+			);
+			str_dtor(&msg);
+		}
 		
 		//TODO: Check if index is too big/small if array
 		if(type->info != erw_TYPEINFO_ARRAY && type->info != erw_TYPEINFO_SLICE)
@@ -691,6 +1157,29 @@ static struct erw_Type* erw_getexprtype(
 			);
 		}
 	}
+	else if(exprnode->type == erw_ASTNODETYPE_STRUCTLITERAL)
+	{
+		//Return NULL
+	}
+	else if(exprnode->type == erw_ASTNODETYPE_UNIONLITERAL)
+	{
+		//Return NULL
+	}
+	else if(exprnode->type == erw_ASTNODETYPE_ARRAYLITERAL)
+	{
+		//Return NULL
+	}
+	else
+	{
+		log_assert(
+			0,
+			"this shouldn't happen: %s (%s) (%zu, %zu)", 
+			exprnode->token->text, 
+			exprnode->token->type->name,
+			exprnode->token->linenum,
+			exprnode->token->column
+		);
+	}
 
 	return ret;
 }
@@ -707,35 +1196,42 @@ static void erw_checkexprtype(
 	log_assert(lines, "is NULL");
 
 	struct erw_Type* type2 = erw_getexprtype(scope, exprnode, lines);
-	if(!erw_type_compare(type, type2))
+	if(type2)
 	{
-		struct erw_ASTNode* firstnode = erw_getfirstnode(exprnode);
-		struct erw_ASTNode* lastnode = erw_getlastnode(exprnode);
+		if(!erw_type_compare(type, type2))
+		{
+			struct erw_ASTNode* firstnode = erw_getfirstnode(exprnode);
+			struct erw_ASTNode* lastnode = erw_getlastnode(exprnode);
 
-		struct Str typestr = erw_type_tostring(type);
-		struct Str type2str = erw_type_tostring(type2);
-		struct Str msg;
-		str_ctorfmt(
-			&msg,
-			"Expected expression of type '%s', got expression of type '%s'",
-			typestr.data,
-			type2str.data
-		);
+			struct Str typestr = erw_type_tostring(type);
+			struct Str type2str = erw_type_tostring(type2);
+			struct Str msg;
+			str_ctorfmt(
+				&msg,
+				"Expected expression of type '%s', got expression of type '%s'",
+				typestr.data,
+				type2str.data
+			);
 
-		erw_error(
-			msg.data, 
-			lines[firstnode->token->linenum - 1].data,
-			firstnode->token->linenum, 
-			firstnode->token->column,
-			(lastnode->token->linenum == firstnode->token->linenum) 
-				? (size_t)(lastnode->token->column + vec_getsize(
-						lastnode->token->text)) - 2
-				: lines[firstnode->token->linenum - 1].len
-		);
-		str_dtor(&msg);
+			erw_error(
+				msg.data, 
+				lines[firstnode->token->linenum - 1].data,
+				firstnode->token->linenum, 
+				firstnode->token->column,
+				(lastnode->token->linenum == firstnode->token->linenum) 
+					? (size_t)(lastnode->token->column + vec_getsize(
+							lastnode->token->text)) - 2
+					: lines[firstnode->token->linenum - 1].len
+			);
+			str_dtor(&msg);
+		}
+
+		erw_type_dtor(type2);
 	}
-
-	erw_type_dtor(type2);
+	else
+	{
+		erw_deduceliteraltype(scope, type, exprnode, lines);
+	}
 }
 
 static void erw_checkfunccall(

@@ -319,10 +319,12 @@ int erw_type_compare(struct erw_Type* type1, struct erw_Type* type2)
 			return 0;
 		}
 
+		/*
 		if(type1->array.mutable != type2->array.mutable)
 		{
 			return 0;
 		}
+		*/
 	}
 	else if(type1->info == erw_TYPEINFO_FUNC)
 	{

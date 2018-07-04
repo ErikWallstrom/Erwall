@@ -319,7 +319,7 @@ struct erw_Type* erw_scope_createtype(
 		else if(node->type == erw_ASTNODETYPE_ARRAY)
 		{
 			tmptype = erw_type_new(erw_TYPEINFO_ARRAY, type);
-			tmptype->array.mutable = 0; //NOTE: Temporary
+			//tmptype->array.mutable = 0; //NOTE: Temporary
 			tmptype->array.elements = atol(node->array.size->token->text); 
 			tmptype->parent = type;
 			//NOTE: No error checking

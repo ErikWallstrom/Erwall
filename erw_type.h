@@ -102,7 +102,7 @@ struct erw_Type
 			size_t size;
 			struct erw_Type* type;
 			size_t elements;
-			int mutable;
+			//int mutable;
 		} array;
 
 		struct

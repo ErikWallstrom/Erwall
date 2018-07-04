@@ -1,4 +1,5 @@
-/* Copyright (C) 2017 Erik Wallström
+/* 
+	Copyright (C) 2017 Erik Wallström
 
 	This file is part of Erwall.
 
@@ -136,6 +137,88 @@ static struct erw_ASTNode* erw_parse_factor(struct erw_Parser* parser)
 		node->cast.expr = erw_parse_expr(parser);
 		erw_parser_expect(parser, erw_TOKENTYPE_RPAREN);
 	}
+	else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_STRUCT))
+	{
+		node = erw_ast_new(
+			erw_ASTNODETYPE_STRUCTLITERAL, 
+			erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_STRUCT)
+		);
+
+		erw_parser_expect(parser, erw_TOKENTYPE_LBRACKET);
+		int first = 1;
+		while(!erw_parser_check(parser, erw_TOKENTYPE_RBRACKET))
+		{
+			if(first)
+			{
+				first = 0;
+			}
+			else
+			{
+				erw_parser_expect(parser, erw_TOKENTYPE_COMMA);
+			}
+
+			vec_pushback(
+				node->structliteral.names, 
+				erw_parser_expect(parser, erw_TOKENTYPE_IDENT)
+			);
+
+			erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_DECLR);
+			vec_pushback(node->structliteral.values, erw_parse_expr(parser));
+			if(!erw_parser_check(parser, erw_TOKENTYPE_COMMA))
+			{
+				break;
+			}
+		}
+
+		erw_parser_expect(parser, erw_TOKENTYPE_RBRACKET);
+	}
+	else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_UNION))
+	{
+		node = erw_ast_new(
+			erw_ASTNODETYPE_UNIONLITERAL, 
+			erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_UNION)
+		);
+		
+		erw_parser_expect(parser, erw_TOKENTYPE_LBRACKET);
+		node->unionliteral.type = erw_parse_type(parser);
+		erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_DECLR);
+		node->unionliteral.value = erw_parse_expr(parser);
+		erw_parser_expect(parser, erw_TOKENTYPE_RBRACKET);
+	}
+	else if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_ARRAY))
+	{
+		node = erw_ast_new(
+			erw_ASTNODETYPE_ARRAYLITERAL, 
+			erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_ARRAY)
+		);
+		
+		erw_parser_expect(parser, erw_TOKENTYPE_LBRACKET);
+		int first = 1;
+		while(!erw_parser_check(parser, erw_TOKENTYPE_RBRACKET))
+		{
+			if(first)
+			{
+				first = 0;
+			}
+			else
+			{
+				erw_parser_expect(parser, erw_TOKENTYPE_COMMA);
+			}
+
+			vec_pushback(node->arrayliteral.values, erw_parse_expr(parser));
+			if(!erw_parser_check(parser, erw_TOKENTYPE_COMMA))
+			{
+				break;
+			}
+		}
+
+		erw_parser_expect(parser, erw_TOKENTYPE_RBRACKET);
+	}
+	/*else if(erw_parser_check(parser, erw_TOKENTYPE_LBRACKET))
+	{
+		//Slicing
+		
+	}*/
 	else
 	{ 
 		struct Str msg;
@@ -250,6 +333,12 @@ static struct erw_ASTNode* erw_parse_ref(struct erw_Parser* parser)
 			&parser->tokens[parser->current]
 		);
 		parser->current++;
+		if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_MUT))
+		{
+			erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_MUT);
+			signnode->unexpr.mutable = 1;
+		}
+
 		signnode->unexpr.expr = erw_parse_factor(parser);
 		signnode->unexpr.left = 1;
 	}
@@ -427,6 +516,11 @@ static struct erw_ASTNode* erw_parse_type(struct erw_Parser* parser)
 		{ 
 			erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_BITAND);
 			tmpnode = erw_ast_new(erw_ASTNODETYPE_REFERENCE, NULL);
+			if(erw_parser_check(parser, erw_TOKENTYPE_KEYWORD_MUT))
+			{
+				erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_MUT);
+				tmpnode->reference.mutable = 1;
+			}
 		}
 		else if(erw_parser_check(parser, erw_TOKENTYPE_LBRACKET))
 		{ 
@@ -620,7 +714,45 @@ static struct erw_ASTNode* erw_parse_struct(struct erw_Parser* parser)
 		erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_STRUCT)
 	);
 
-	erw_parse_varlist(parser, node->struct_.members);
+	erw_parser_expect(parser, erw_TOKENTYPE_LBRACKET);
+	int first = 1;
+	while(!erw_parser_check(parser, erw_TOKENTYPE_RBRACKET))
+	{
+		if(first)
+		{
+			first = 0;
+		}
+		else
+		{
+			erw_parser_expect(parser, erw_TOKENTYPE_COMMA);
+		}
+
+		struct erw_ASTNode* member = erw_ast_new(
+			erw_ASTNODETYPE_STRUCTMEMBER, 
+			NULL
+		);
+
+		member->structmember.name = erw_parser_expect(
+			parser, 
+			erw_TOKENTYPE_IDENT
+		);
+		erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_DECLR);
+		member->structmember.type = erw_parse_type(parser);
+
+		if(erw_parser_check(parser, erw_TOKENTYPE_OPERATOR_ASSIGN))
+		{
+			erw_parser_expect(parser, erw_TOKENTYPE_OPERATOR_ASSIGN);
+			member->structmember.value = erw_parse_expr(parser);
+		}
+
+		vec_pushback(node->struct_.members, member);
+		if(!erw_parser_check(parser, erw_TOKENTYPE_COMMA))
+		{
+			break;
+		}
+	}
+
+	erw_parser_expect(parser, erw_TOKENTYPE_RBRACKET);
 	return node;
 }
 
@@ -631,9 +763,9 @@ static struct erw_ASTNode* erw_parse_union(struct erw_Parser* parser)
 		erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_UNION)
 	);
 
-	erw_parser_expect(parser, erw_TOKENTYPE_LPAREN);
+	erw_parser_expect(parser, erw_TOKENTYPE_LBRACKET);
 	int first = 1;
-	while(!erw_parser_check(parser, erw_TOKENTYPE_RPAREN))
+	while(!erw_parser_check(parser, erw_TOKENTYPE_RBRACKET))
 	{
 		if(first)
 		{
@@ -651,7 +783,7 @@ static struct erw_ASTNode* erw_parse_union(struct erw_Parser* parser)
 		}
 	}
 
-	erw_parser_expect(parser, erw_TOKENTYPE_RPAREN);
+	erw_parser_expect(parser, erw_TOKENTYPE_RBRACKET);
 	return node;
 }
 
@@ -662,9 +794,9 @@ static struct erw_ASTNode* erw_parse_enum(struct erw_Parser* parser)
 		erw_parser_expect(parser, erw_TOKENTYPE_KEYWORD_ENUM)
 	);
 
-	erw_parser_expect(parser, erw_TOKENTYPE_LPAREN);
+	erw_parser_expect(parser, erw_TOKENTYPE_LBRACKET);
 	int first = 1;
-	while(!erw_parser_check(parser, erw_TOKENTYPE_RPAREN))
+	while(!erw_parser_check(parser, erw_TOKENTYPE_RBRACKET))
 	{
 		if(first)
 		{
@@ -702,7 +834,7 @@ static struct erw_ASTNode* erw_parse_enum(struct erw_Parser* parser)
 		}
 	}
 
-	erw_parser_expect(parser, erw_TOKENTYPE_RPAREN);
+	erw_parser_expect(parser, erw_TOKENTYPE_RBRACKET);
 	return node;
 }
 

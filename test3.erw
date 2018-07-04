@@ -1,34 +1,35 @@
-type Player: struct(
-	mut x: Int32,
-	mut y: Int32,
-	let update: func(Player) -> Player
-);
+type TestUnion: union[Int32, Float32, Char];
+type TestStruct: struct[
+	x: Int32, 
+	y: Int32, 
+	name: []Char
+];
 
-func player_update: (let self: Player) -> Player
+func test: (let t1: TestStruct, let t2: TestUnion, let t3: [2]Bool)
 {
-	return self;
-}
-
-func test: (let x: Int32) -> Int32
-{
-	while(true)
-	{
-		return x;
-	}
+	
 }
 
 func main: () -> Int32
 {
-#[
-	let x: [[]Char]Int32;
-	x["hello"] = 12;
+	let test1: TestUnion  = union[Float32: 3.14];
+	let test2: TestStruct = struct[
+		x: 32, 
+		y: 100, 
+		name: "Hello World"
+	];
 
-	let num: Int64 = Int64(44);
-	let numbers: [5]Int64 = [5]Int64(33, 44, 55, 66, 77);
-	let player: Player = Player(x: 12, y: 44, update: test);
-	let day: Weekday = Weekday.monday;
-	let result: Result = Result.None();
-#]
+	let x: Int32 = test2.x;
+	let test3: [4]Int32 = array[12, 55, 100, 5];
+
+	test(
+		struct[x: 33, y: 100, name: "Hello"], 
+		union[Char: 'C'], 
+		array[true, false]
+	);
+
+	let x_ref1: &Int32 = &x;
+	let x_ref2: &mut Int32 = x_ref1;
 	return 0;
 }
 
